@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05070a;
+  --foreground: #f8fafc;
+  
+  --happy: #22c55e;
+  --sad: #3b82f6;
+  --angry: #ef4444;
+  --amber: #f59e0b;
+  --pink: #ec4899;
+  --purple: #a855f7;
+  --teal: #14b8a6;
+  
+  --accent-color: var(--amber); /* Default */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-happy: var(--happy);
+  --color-sad: var(--sad);
+  --color-angry: var(--angry);
+  --color-amber: var(--amber);
+  --color-pink: var(--pink);
+  --color-purple: var(--purple);
+  --color-teal: var(--teal);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-accent {
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 5px var(--accent-color); }
+  50% { box-shadow: 0 0 20px var(--accent-color); }
+  100% { box-shadow: 0 0 5px var(--accent-color); }
+}
+
+.animate-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+.bg-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Emotion Color Overrides */
+[data-emotion="Happy"] { --accent-color: var(--happy); }
+[data-emotion="Sad"] { --accent-color: var(--sad); }
+[data-emotion="Angry"] { --accent-color: var(--angry); }
+[data-emotion="Neutral"] { --accent-color: var(--amber); }
+[data-emotion="Surprise"] { --accent-color: var(--pink); }
+[data-emotion="Fear"] { --accent-color: var(--purple); }
+[data-emotion="Disgust"] { --accent-color: var(--teal); }
+
+/* Mission Control Typography */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
