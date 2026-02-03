@@ -1,8 +1,12 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Install system dependencies for OpenCV and other libraries
-# System dependencies removed (Relying on headless wheels)
+# Install minimal system dependencies for opencv-python-headless
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libxcb1 \
+    libxrender1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app
