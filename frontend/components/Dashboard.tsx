@@ -374,7 +374,7 @@ export default function DashboardContent() {
     );
 }
 
-function StatusBadge({ icon, label, status }: { icon: any, label: string, status?: string }) {
+export function StatusBadge({ icon, label, status }: { icon: React.ReactNode, label: string, status?: string }) {
     const isActive = status?.includes('Connected') || status?.includes('Ready') || status === 'Running' || status === 'Streaming' || status === 'Online';
     const isError = status === 'Error' || status === 'Disconnected' || status?.includes('Lost');
 
