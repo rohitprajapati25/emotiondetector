@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+env/
+.env
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (optional to ignore if they are too big, but we keep them for now)
+# model/emotion_model.h5
+# models/*.caffemodel
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
