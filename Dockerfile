@@ -2,8 +2,8 @@
 FROM python:3.11-slim
 
 # Install system dependencies for OpenCV and other libraries
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+# Install system dependencies (only libglib is needed for headless opencv)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
