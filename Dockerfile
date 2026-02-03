@@ -2,10 +2,7 @@
 FROM python:3.11-slim
 
 # Install system dependencies for OpenCV and other libraries
-# Install system dependencies (only libglib is needed for headless opencv)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+# System dependencies removed (Relying on headless wheels)
 
 # Set the working directory in the container
 WORKDIR /app
