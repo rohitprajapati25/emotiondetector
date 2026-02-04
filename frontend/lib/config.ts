@@ -1,18 +1,20 @@
 const getBaseUrl = () => {
+    // 1. Priority: Explicit Environment Variable (Set in Vercel Dashboard)
     const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (envUrl) {
-        return envUrl;
+    if (envUrl) return envUrl;
+
+    // 2. Priority: Local Development (running 'npm run dev' locally)
+    // This ensures that when you run locally, it ALWAYS uses localhost:8000
+    if (process.env.NODE_ENV === "development") {
+        return "http://localhost:8000";
     }
 
-    // Client-side dynamic detection
+    // 3. Status Check: Logs for debugging (Visible in Browser Console)
     if (typeof window !== "undefined") {
-        // If we are on localhost, use localhost
-        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-            return "http://localhost:8000";
-        }
+        console.log("🌐 Production Mode Detected: Using Cloudflare Tunnel");
     }
 
-    // Default fallback to Cloudflare Tunnel for Vercel/Production
+    // 4. Default Fallback: Cloudflare Tunnel for Vercel/Production
     return "https://italia-deployment-dresses-values.trycloudflare.com";
 };
 
