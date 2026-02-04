@@ -115,7 +115,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 8 : 12; // Increased for "Super Fast" feel
+        const FPS_THROTTLE = isMobile ? 12 : 20; // Super smooth 20 FPS target for analysis
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -133,12 +133,12 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Fixed Small Canvas (320x180) = 4x Less data than HD
+                            // Small Canvas (320x180) for performance
                             canvas.width = 320;
                             canvas.height = 180;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.3); // Compressed for faster transmission
+                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -187,7 +187,7 @@ export default function DashboardContent() {
                         return json;
                     });
                     setError(null);
-                    setLoading(false); // Only stop loading when we actually have data
+                    setLoading(false);
                 }
             } catch (err) {
                 if (isMounted) setError("Cloud Brain: Connecting...");
@@ -212,6 +212,7 @@ export default function DashboardContent() {
             if (res.ok) {
                 setIsRunning(command === 'start');
                 setStreamKey(Date.now());
+                if (command === 'stop') setProcessedImage(null);
             }
         } catch (err) {
             console.error("Control failed:", err);
@@ -224,209 +225,279 @@ export default function DashboardContent() {
     const currentEmotion = data?.emotion || "Neutral";
     const accentColor = `var(--${data?.heatmap || 'amber'})`;
 
-    // In Cloud mode, we check if the Browser Camera is active
     const isBrowserCameraActive = !!videoRef.current?.srcObject;
-    const isCameraConnected = isBrowserCameraActive;
+    const isCameraConnected = isBrowserCameraActive || isLocalHost;
 
     return (
-        <main className="min-h-screen p-4 md:p-8 bg-grid relative flex flex-col gap-6 overflow-x-hidden" data-emotion={currentEmotion}>
+        <main className="min-h-screen p-3 md:p-6 bg-[#020617] text-slate-50 relative flex flex-col gap-4 md:gap-6 overflow-hidden selection:bg-indigo-500/30" data-emotion={currentEmotion}>
 
-            {/* Dynamic Border Glow */}
+            {/* Liquid Background Grain/Blur */}
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
+                <div
+                    className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] rounded-full blur-[140px] transition-all duration-1000"
+                    style={{ backgroundColor: accentColor }}
+                />
+                <div
+                    className="absolute top-[40%] -right-[10%] w-[30%] h-[50%] rounded-full blur-[120px] transition-all duration-1000 opacity-20"
+                    style={{ backgroundColor: 'var(--blue-600)' }}
+                />
+            </div>
+
+            {/* Global Frame Glow */}
             <div
-                className="fixed inset-0 pointer-events-none transition-all duration-1000 z-50"
+                className="fixed inset-0 pointer-events-none transition-all duration-1000 z-50 border-[0.5px]"
                 style={{
                     boxShadow: isRunning
-                        ? `inset 0 0 120px color-mix(in srgb, ${accentColor} 30%, transparent)`
-                        : 'inset 0 0 120px rgba(255, 0, 0, 0.1)',
-                    border: isRunning
-                        ? `${mounted && window.innerWidth < 768 ? '3px' : '6px'} solid color-mix(in srgb, ${accentColor} 50%, transparent)`
-                        : `${mounted && window.innerWidth < 768 ? '3px' : '6px'} solid rgba(255, 0, 0, 0.2)`
+                        ? `inset 0 0 100px color-mix(in srgb, ${accentColor} 15%, transparent)`
+                        : 'inset 0 0 40px rgba(0, 0, 0, 0.5)',
+                    borderColor: isRunning
+                        ? `color-mix(in srgb, ${accentColor} 20%, transparent)`
+                        : 'rgba(255, 255, 255, 0.03)'
                 }}
             />
 
-            {/* Header Section */}
-            <header className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 md:gap-6 glass p-4 md:p-6 rounded-2xl animate-glow relative z-10">
-                <div className="flex items-center gap-3 md:gap-4">
-                    <div className="p-2 rounded-xl bg-opacity-20 transition-colors duration-1000" style={{ backgroundColor: accentColor }}>
-                        <Activity className="w-6 h-6 md:w-7 md:h-7" style={{ color: accentColor }} />
+            {/* Premium Control Header */}
+            <header className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-4 glass-dark p-3 md:px-8 md:py-3 rounded-[2rem] border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-4">
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-white/5 blur-xl rounded-full scale-150 transition-transform group-hover:scale-110" />
+                        <div className="relative p-2.5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-inner">
+                            <Activity className="w-5 h-5 md:w-6 md:h-6 transition-colors duration-700" style={{ color: accentColor }} />
+                        </div>
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500 leading-tight">
-                            Exhibition AI Brain
+                        <h1 className="text-lg md:text-xl font-black tracking-tighter text-white flex items-center gap-2">
+                            AURA <span className="text-slate-500 font-extralight tracking-widest">VISION</span>
                         </h1>
-                        <p className="text-slate-400 uppercase text-[8px] md:text-[10px] tracking-[0.4em] font-bold">Wireless Core v5.1</p>
-                    </div>
-                </div>
-
-                {/* System Camera Status */}
-                <div className="flex-grow w-full lg:max-w-xl px-0 lg:px-4 flex items-center justify-start lg:justify-center order-3 lg:order-2">
-                    <div className={`w-full lg:w-auto px-4 md:px-6 py-2 md:py-3 rounded-xl border flex items-center gap-3 transition-colors duration-500 ${isCameraConnected ? 'glass-accent border-green-500/30' : 'bg-red-900/10 border-red-500/20'}`}>
-                        {isCameraConnected ? (
-                            <Camera className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
-                        ) : (
-                            <Camera className="w-4 h-4 md:w-5 md:h-5 text-red-500 opacity-50" />
-                        )}
-                        <div className="flex flex-col">
-                            <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest text-slate-500">Video Source</span>
-                            <span className={`text-xs md:text-sm font-bold ${isCameraConnected ? 'text-green-400' : 'text-red-400'}`}>
-                                {isCameraConnected ? "Browser Camera Active" : "Searching..."}
-                            </span>
+                        <div className="flex items-center gap-2">
+                            <span className={`w-1 h-1 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} />
+                            <p className="text-slate-500 uppercase text-[7px] tracking-[0.4em] font-black">Neural Core v6.2.0</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4 self-stretch lg:self-auto order-2 lg:order-3">
+                <div className="hidden xl:flex items-center gap-10">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] uppercase font-black tracking-widest text-slate-500 mb-0.5">Stream Sync</span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex gap-0.5">
+                                {[1, 2, 3, 4].map(i => <div key={i} className={`w-1 h-3 rounded-full ${isRunning ? 'bg-indigo-500' : 'bg-slate-800'}`} style={{ opacity: 1 - (i * 0.2), animationDelay: `${i * 0.1}s` }} />)}
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-400">0.00ms</span>
+                        </div>
+                    </div>
+                    <div className="w-px h-8 bg-white/5" />
+                    <div className="flex flex-col">
+                        <span className="text-[8px] uppercase font-black tracking-widest text-slate-500 mb-0.5">AI Integrity</span>
+                        <span className="text-[10px] font-mono text-slate-300">SECURE_LEVEL_4</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full lg:w-auto">
                     <button
                         onClick={async () => {
                             try {
                                 await fetch(`${API_BASE_URL}/reset_camera`, { method: 'POST' });
-                                setTimeout(() => { setStreamKey(Date.now()); setError(null); setIsRunning(true); }, 2000);
+                                setTimeout(() => { setStreamKey(Date.now()); setError(null); setIsRunning(true); }, 1500);
                             } catch (e) { console.error(e); }
                         }}
-                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 md:px-5 py-2.5 md:py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] md:text-xs border border-white/5"
+                        className="p-3 rounded-xl bg-slate-400/5 hover:bg-slate-400/10 border border-white/5 transition-all active:scale-90 group"
+                        title="Reset Sensor"
                     >
-                        <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Reset</span>
+                        <RefreshCw className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:rotate-180 transition-all duration-500" />
                     </button>
 
-                    {!isRunning ? (
-                        <button
-                            onClick={() => toggleSystem('start')}
-                            className="flex-1 lg:flex-none flex items-center justify-center gap-2 md:gap-3 bg-green-600 hover:bg-green-500 text-white px-4 md:px-8 py-2.5 md:py-3 rounded-xl font-black uppercase tracking-widest text-xs md:text-base shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-                        >
-                            <Play className="w-4 h-4 md:w-5 md:h-5 fill-current" />
-                            Start AI
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => toggleSystem('stop')}
-                            className="flex-1 lg:flex-none flex items-center justify-center gap-2 md:gap-3 bg-red-600 hover:bg-red-500 text-white px-4 md:px-8 py-2.5 md:py-3 rounded-xl font-black uppercase tracking-widest text-xs md:text-base shadow-[0_0_20px_rgba(239,68,68,0.4)]"
-                        >
-                            <Pause className="w-4 h-4 md:w-5 md:h-5 fill-current" />
-                            Stop AI
-                        </button>
-                    )}
+                    <button
+                        onClick={() => toggleSystem(isRunning ? 'stop' : 'start')}
+                        className={`flex-grow lg:flex-none px-8 md:px-12 py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 active:scale-95 ${isRunning
+                                ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-lg hover:border-red-500/40'
+                                : 'bg-indigo-600 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500 hover:-translate-y-0.5'
+                            }`}
+                    >
+                        {isRunning ? <><Pause className="w-3.5 h-3.5 fill-current" /> Terminate</> : <><Play className="w-3.5 h-3.5 fill-current" /> Initialize</>}
+                    </button>
                 </div>
             </header>
 
-            {/* Main Grid Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
+            {/* Main Visual Display */}
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 flex-grow">
 
-                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
-                    <div className={`rounded-3xl overflow-hidden relative flex-grow min-h-[450px] md:min-h-[600px] ${isMobile ? 'aspect-[2/3]' : 'aspect-video'} border-2 transition-colors duration-1000 bg-black flex items-center justify-center`} style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
+                {/* Primary Observer Panel */}
+                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 relative">
+                    <div className={`group rounded-[3rem] overflow-hidden relative flex-grow min-h-[420px] md:min-h-[580px] border border-white/10 bg-slate-950/40 backdrop-blur-md shadow-2xl transition-all duration-1000`} style={{ boxShadow: isRunning ? `0 0 80px -40px ${accentColor}66` : 'none' }}>
 
-                        {/* Hidden processing canvas */}
-                        <canvas ref={canvasRef} width={320} height={180} style={{ display: 'none' }} />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* Local Video Feed for Instant Feedback */}
-                        {isRunning && !isLocalHost && (
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
-                                style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
-                            />
-                        )}
-
-                        {isRunning ? (
-                            <>
-                                {/* AI Processed Overlay */}
+                        {/* Video Layer Container */}
+                        <div className="absolute inset-0">
+                            {isRunning && !isLocalHost && (
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className={`w-full h-full object-cover transition-all duration-1000 ${processedImage ? 'opacity-40 scale-105' : 'opacity-100 scale-100'}`}
+                                    style={{ transform: 'scaleX(-1)' }}
+                                />
+                            )}
+                            {isRunning && (
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
-                                    style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
-                                    alt="AI Stream"
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
+                                    style={{ transform: 'scaleX(-1)' }}
+                                    alt="Vision Feed"
                                     key={streamKey}
                                 />
-
-                                <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-20">
-                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                    <span className="text-[8px] md:text-xs font-black tracking-widest uppercase text-white">LIVE AI ANALYSIS</span>
+                            )}
+                            {!isRunning && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-[#020617]">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-indigo-500/10 blur-3xl rounded-full" />
+                                        <Power className="w-16 h-16 text-slate-800 relative z-10" />
+                                    </div>
+                                    <div className="flex flex-col items-center gap-2">
+                                        <p className="font-black uppercase tracking-[0.5em] text-[10px] text-slate-600">Visual Core Disconnected</p>
+                                        <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                                    </div>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-40 bg-slate-900">
-                                <Power className="w-20 h-20 text-slate-600" />
-                                <p className="font-black uppercase tracking-[0.5em] text-sm text-slate-500 text-center">System Standby</p>
+                            )}
+                        </div>
+
+                        {/* HUD Interface Overlays */}
+                        <div className="absolute inset-0 pointer-events-none z-20">
+                            {/* Scanning Anim */}
+                            {isRunning && (
+                                <div className="absolute inset-x-0 h-[2px] bg-white/20 blur-[2px] animate-[scan_4s_linear_infinite] z-30" />
+                            )}
+
+                            {/* Corner Accents */}
+                            <div className="absolute top-8 left-8 p-3 glass-dark rounded-2xl border border-white/10 flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-indigo-500 animate-pulse' : 'bg-slate-700'}`} />
+                                <span className="text-[9px] font-black tracking-[0.3em] text-slate-400 uppercase">Input_Main</span>
+                                <div className="w-px h-3 bg-white/10" />
+                                <span className="text-[9px] font-mono text-slate-500">RES: 1280x720</span>
+                            </div>
+
+                            <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
+                                <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-black text-slate-500 tracking-widest uppercase">
+                                    Encrypted_X2
+                                </div>
+                                <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-mono text-indigo-400/70">
+                                    0x7F_SYNC_445
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subject Profile (Centerpiece) */}
+                        {isRunning && (
+                            <div className="absolute inset-x-4 bottom-4 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
+                                <div className="flex flex-col lg:flex-row items-end justify-between gap-6">
+                                    <div className="w-full lg:w-auto glass-dark p-6 md:p-10 rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
+                                                <div className="h-px w-12 bg-white/10" />
+                                            </div>
+                                            <span className="text-6xl md:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
+                                                {currentEmotion}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-12 mt-8 pt-8 border-t border-white/5">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Profile</span>
+                                                <span className="font-black text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-2">/</span> {data?.gender}</span>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Match</span>
+                                                <div className="flex items-end gap-1.5">
+                                                    <span className="font-black text-2xl text-white">96.8</span>
+                                                    <span className="text-[10px] text-indigo-500 font-black mb-1.5">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {data?.message && (
+                                        <div className="hidden lg:block max-w-sm glass-dark p-6 rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-sm pointer-events-auto hover:text-white transition-colors">
+                                            <div className="flex items-center gap-2 mb-2 opacity-30">
+                                                <div className="w-10 h-[1px] bg-slate-400" />
+                                                <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
+                                            </div>
+                                            "{data.message}"
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Result HUD */}
-                    {isRunning && (
-                        <div className="lg:absolute lg:inset-x-8 lg:bottom-8 static flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 pointer-events-none mt-2 lg:mt-0 z-20">
-                            <div className="glass p-4 md:p-8 rounded-2xl flex flex-col gap-1 md:gap-2 min-w-[300px] border-l-8 backdrop-blur-2xl shadow-2xl transition-all duration-1000 pointer-events-auto" style={{ borderColor: accentColor }}>
-                                <span className="text-[10px] uppercase tracking-widest font-black text-slate-500">Active Subject</span>
-                                <span className="text-4xl md:text-7xl font-black leading-none" style={{ color: accentColor }}>{currentEmotion}</span>
-                                <div className="flex gap-6 mt-4 pt-4 border-t border-white/5">
-                                    <div className="flex flex-col">
-                                        <span className="text-slate-600 text-[9px] font-black uppercase">Age</span>
-                                        <span className="font-bold text-lg">{data?.age}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-slate-600 text-[9px] font-black uppercase">Gender</span>
-                                        <span className="font-bold text-lg">{data?.gender}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="glass p-4 md:p-6 rounded-2xl max-w-sm text-center lg:text-right backdrop-blur-2xl pointer-events-auto border border-white/10">
-                                <p className="text-sm md:text-xl italic font-semibold text-slate-200">{data?.message}</p>
-                            </div>
-                        </div>
-                    )}
                 </section>
 
-                <section className="col-span-1 lg:col-span-4 flex flex-col gap-6">
-                    <div className="glass p-6 md:p-8 rounded-3xl flex items-center justify-between border-b-8 border-blue-600 relative overflow-hidden shadow-2xl">
-                        <div className="relative z-10">
-                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total Visitors</p>
-                            <h3 className="text-4xl md:text-6xl font-black mt-2">{data?.visitors}</h3>
+                {/* Secondary Intelligence Panel */}
+                <section className="col-span-1 lg:col-span-4 flex flex-col gap-4 md:gap-6">
+                    {/* Visitor Matrix */}
+                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
+                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
+                        <div>
+                            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
+                            <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
                         </div>
-                        <Users className="w-10 h-10 text-blue-400 opacity-50" />
+                        <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
+                            <Users className="w-8 h-8" />
+                        </div>
                     </div>
 
-                    <div className="glass p-6 md:p-8 rounded-3xl flex flex-col gap-6 flex-grow shadow-2xl">
-                        <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest border-b border-white/5 pb-4">Emotion Distribution</p>
-                        <div className="flex flex-col gap-5 mt-2">
-                            {data && Object.entries(data.emotion_stats).map(([emotion, count]) => (
-                                <div key={emotion} className="flex flex-col gap-1.5">
-                                    <div className="flex justify-between text-[9px] font-black">
-                                        <span className="uppercase tracking-widest text-slate-400">{emotion}</span>
-                                        <span className="opacity-60">{count}</span>
-                                    </div>
-                                    <div className="h-2 bg-background/50 rounded-full overflow-hidden border border-white/5">
-                                        <div
-                                            className="h-full transition-all duration-1000"
-                                            style={{
-                                                width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
-                                                backgroundColor: `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`,
-                                                boxShadow: `0 0 10px var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                    {/* Spectral Distribution */}
+                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-8 flex-grow shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-1">
+                                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
+                                <div className="h-px w-20 bg-indigo-500/30" />
+                            </div>
+                            <Activity className="w-4 h-4 text-slate-700" />
                         </div>
+
+                        <div className="flex flex-col gap-6">
+                            {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
+                                const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
+                                return (
+                                    <div key={emotion} className="group flex flex-col gap-2.5">
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
+                                            <span className="text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
+                                        </div>
+                                        <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                                            <div
+                                                className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
+                                                style={{
+                                                    width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
+                                                    backgroundColor: color,
+                                                    boxShadow: `0 0 20px 2px ${color}33`
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Metadata Footer */}
+                    <div className="glass-dark p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]" />
+                            <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">System Operational</span>
+                        </div>
+                        <span className="text-[8px] font-mono text-slate-600">STABLE_v6.4.1</span>
                     </div>
                 </section>
             </div>
 
             {error && (
-                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 glass px-8 py-4 rounded-full flex items-center gap-4 text-red-400 animate-pulse z-[100] border border-red-500/50">
-                    <AlertCircle className="w-5 h-5" />
-                    <span className="text-sm font-black uppercase tracking-widest">{error}</span>
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] glass-dark px-8 py-4 rounded-2xl border border-red-500/40 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-2xl">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-red-500">{error}</span>
                 </div>
             )}
-
-            <footer className="flex justify-between items-center text-[9px] text-slate-600 font-black uppercase tracking-widest mt-2 opacity-50">
-                <span>© 2026 EXHIBITION_CORE</span>
-                <div className="flex gap-6">
-                    <span>LIVE: {isRunning ? 'SECURE' : 'STANDBY'}</span>
-                    <span>BRAIN: PYTHON_AI</span>
-                </div>
-            </footer>
         </main>
     );
 }
@@ -443,6 +514,3 @@ export function StatusBadge({ icon, label, status }: { icon: React.ReactNode, la
         </div>
     );
 }
-
-
-
