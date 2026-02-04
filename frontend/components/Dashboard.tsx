@@ -150,9 +150,18 @@ export default function DashboardContent() {
 
                                 if (res.ok) {
                                     const result = await res.json();
+                                    // Update Image directly (Direct DOM)
                                     if (aiImgRef.current) {
                                         aiImgRef.current.src = result.image;
                                         aiImgRef.current.style.opacity = "1";
+                                    }
+                                    // Update Labels (React State)
+                                    if (result.data) {
+                                        setData(prev => prev ? ({
+                                            ...prev,
+                                            ...result.data,
+                                            // Keep stats/visitors from the polling or merge them if needed
+                                        }) : null);
                                     }
                                 }
                             } catch (err) {
