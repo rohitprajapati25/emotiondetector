@@ -203,24 +203,32 @@ def process_frame_logic(frame, running_ai=True):
         "status": "No Face Detected"
     }
 
-    # Optimized ROI for "Real Human Face Size"
-    roi_h, roi_w = int(h * 0.75), int(w * 0.5)
+    # Expanded ROI for better mobile usability (now 85% height, 80% width)
+    roi_h, roi_w = int(h * 0.85), int(w * 0.8)
     roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
     roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
     
     cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
+    gray = cv2.equalizeHist(gray) # Improve contrast for detection
+    
+    # Sensitivity tweak: 1.1 scale factor and 3 minNeighbors for better mobile detection
+    faces = face_cascade.detectMultiScale(gray, 1.1, 3, minSize=(40, 40))
     
     found_face = None
+    # Priority 1: Faces within ROI
     for (x, y, fw, fh) in faces:
         cx, cy = x + fw//2, y + fh//2
         if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
             found_face = (x, y, fw, fh)
             break
-        else:
-            cv2.rectangle(frame, (x, y), (x+fw, y+fh), (60, 60, 60), 1)
+    
+    # Priority 2: Fallback to any face in frame if none in ROI
+    if not found_face and len(faces) > 0:
+        found_face = faces[0]
+        # Draw a visual hint that it's outside center
+        cv2.rectangle(frame, (found_face[0], found_face[1]), (found_face[0]+found_face[2], found_face[1]+found_face[3]), (0, 165, 255), 1)
 
     if found_face:
         x, y, fw, fh = found_face

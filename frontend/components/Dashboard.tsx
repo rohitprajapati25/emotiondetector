@@ -133,12 +133,13 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Small Canvas (320x180) for performance
-                            canvas.width = 320;
-                            canvas.height = 180;
+                            // Optimized resolution (480x270) for high-accuracy mobile detection
+                            canvas.width = 480;
+                            canvas.height = 270;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
+                            // Quality increased to 0.6 for better detail
+                            const imageData = canvas.toDataURL("image/jpeg", 0.6);
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -376,73 +377,67 @@ export default function DashboardContent() {
                             )}
                         </div>
 
-                        {/* HUD Interface Overlays */}
+
+                        {/* HUD Interface Overlays (Keep only scanning and technical bits) */}
                         <div className="absolute inset-0 pointer-events-none z-20">
-                            {/* Scanning Anim */}
                             {isRunning && (
                                 <div className="absolute inset-x-0 h-[2px] bg-white/20 blur-[2px] animate-[scan_4s_linear_infinite] z-30" />
                             )}
-
-                            {/* Corner Accents */}
                             <div className="absolute top-8 left-8 p-3 glass-dark rounded-2xl border border-white/10 flex items-center gap-3">
                                 <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-indigo-500 animate-pulse' : 'bg-slate-700'}`} />
                                 <span className="text-[9px] font-black tracking-[0.3em] text-slate-400 uppercase">Input_Main</span>
-                                <div className="w-px h-3 bg-white/10" />
-                                <span className="text-[9px] font-mono text-slate-500">RES: 1280x720</span>
                             </div>
-
                             <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
                                 <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-black text-slate-500 tracking-widest uppercase">
                                     Encrypted_X2
                                 </div>
-                                <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-mono text-indigo-400/70">
-                                    0x7F_SYNC_445
-                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Subject Profile (Centerpiece) */}
-                        {isRunning && (
-                            <div className="absolute inset-x-4 bottom-4 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
-                                <div className="flex flex-col lg:flex-row items-end justify-between gap-6">
-                                    <div className="w-full lg:w-auto glass-dark p-6 md:p-10 rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
-                                                <div className="h-px w-12 bg-white/10" />
-                                            </div>
-                                            <span className="text-6xl md:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
-                                                {currentEmotion}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-12 mt-8 pt-8 border-t border-white/5">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Profile</span>
-                                                <span className="font-black text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-2">/</span> {data?.gender}</span>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Match</span>
-                                                <div className="flex items-end gap-1.5">
-                                                    <span className="font-black text-2xl text-white">96.8</span>
-                                                    <span className="text-[10px] text-indigo-500 font-black mb-1.5">%</span>
-                                                </div>
-                                            </div>
+                    {/* NEW: Result Panel Below Camera (Responsive Flex) */}
+                    {isRunning && (
+                        <div className="flex flex-col md:flex-row gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
+                            {/* Current Aura Dashboard */}
+                            <div className="flex-grow glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl shadow-2xl group/stats">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
+                                        <div className="h-px w-12 bg-white/10" />
+                                    </div>
+                                    <span className="text-5xl md:text-7xl font-black tracking-tighter transition-all duration-1000" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
+                                        {currentEmotion}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-white/5">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Profile</span>
+                                        <span className="font-black text-lg text-white">{data?.age} <span className="text-slate-600 font-light mx-1">/</span> {data?.gender}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Match</span>
+                                        <div className="flex items-end gap-1">
+                                            <span className="font-black text-lg text-white">96.8</span>
+                                            <span className="text-xs text-indigo-500 font-black mb-1">%</span>
                                         </div>
                                     </div>
-
-                                    {data?.message && (
-                                        <div className="hidden lg:block max-w-sm glass-dark p-6 rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-sm pointer-events-auto hover:text-white transition-colors">
-                                            <div className="flex items-center gap-2 mb-2 opacity-30">
-                                                <div className="w-10 h-[1px] bg-slate-400" />
-                                                <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
-                                            </div>
-                                            "{data.message}"
-                                        </div>
-                                    )}
                                 </div>
                             </div>
-                        )}
-                    </div>
+
+                            {/* AI Synthesis Message */}
+                            {data?.message && (
+                                <div className="w-full md:max-w-xs glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 backdrop-blur-3xl flex flex-col justify-center">
+                                    <div className="flex items-center gap-2 mb-3 opacity-30">
+                                        <div className="w-8 h-[1px] bg-slate-400" />
+                                        <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
+                                    </div>
+                                    <p className="italic text-slate-300 font-medium leading-relaxed text-sm">
+                                        "{data.message}"
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 {/* Secondary Intelligence Panel */}
