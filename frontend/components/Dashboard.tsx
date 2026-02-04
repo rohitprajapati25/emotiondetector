@@ -108,7 +108,9 @@ export default function DashboardContent() {
             const loadModels = async () => {
                 try {
                     // Models assumed to be in public/models
-                    const MODEL_URL = '/models';
+                    // Use window.location.origin to ensure absolute path, avoiding relative path issues
+                    const MODEL_URL = window.location.origin + '/models';
+                    console.log("[AURA] Loading models from:", MODEL_URL);
                     await Promise.all([
                         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
