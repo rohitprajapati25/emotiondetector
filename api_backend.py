@@ -229,8 +229,8 @@ def process_frame_logic(frame, running_ai=True):
         "status": "No Face Detected"
     }
 
-    # Expanded ROI for better mobile usability
-    roi_h, roi_w = int(h * 0.90), int(w * 0.90)
+    # Widen ROI for better mobile/laptop usability (95% coverage)
+    roi_h, roi_w = int(h * 0.95), int(w * 0.95)
     roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
     roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
     
@@ -250,6 +250,27 @@ def process_frame_logic(frame, running_ai=True):
     if not found_face and len(faces) > 0:
         found_face = faces[0]
         cv2.rectangle(frame, (found_face[0], found_face[1]), (found_face[0]+found_face[2], found_face[1]+found_face[3]), (0, 165, 255), 1)
+
+    # --- Temporal Smoothing (Simple low-pass filter) ---
+    if found_face:
+        # Check if we already have a 'smoothed_box' in state to interpolate
+        with state.lock:
+            if not hasattr(state, 'smoothed_box') or state.smoothed_box is None:
+                state.smoothed_box = found_face
+            else:
+                # 70% current, 30% new for stability
+                sx, sy, sw, sh = state.smoothed_box
+                nx, ny, nw, nh = found_face
+                state.smoothed_box = (
+                    int(sx * 0.7 + nx * 0.3),
+                    int(sy * 0.7 + ny * 0.3),
+                    int(sw * 0.7 + nw * 0.3),
+                    int(sh * 0.7 + nh * 0.3)
+                )
+            found_face = state.smoothed_box
+    else:
+        with state.lock:
+            state.smoothed_box = None
 
     if found_face:
         x, y, fw, fh = found_face
@@ -280,7 +301,7 @@ def process_frame_logic(frame, running_ai=True):
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
+                    cv2.putText(frame, f"{final_emo}", (x, y-10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     else:
         result_data["message"] = "Please step into the Zone"

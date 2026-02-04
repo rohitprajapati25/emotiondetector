@@ -463,6 +463,25 @@ export default function DashboardContent() {
                                     Encrypted_X2
                                 </div>
                             </div>
+
+                            {/* Corner Brackets HUD */}
+                            <div className="absolute inset-0 z-30 pointer-events-none opacity-40">
+                                {/* Top Left */}
+                                <div className="absolute top-[15%] left-[15%] w-8 h-8 border-l-2 border-t-2 border-white/40 rounded-tl-lg" />
+                                {/* Top Right */}
+                                <div className="absolute top-[15%] right-[15%] w-8 h-8 border-r-2 border-t-2 border-white/40 rounded-tr-lg" />
+                                {/* Bottom Left */}
+                                <div className="absolute bottom-[15%] left-[15%] w-8 h-8 border-l-2 border-b-2 border-white/40 rounded-bl-lg" />
+                                {/* Bottom Right */}
+                                <div className="absolute bottom-[15%] right-[15%] w-8 h-8 border-r-2 border-b-2 border-white/40 rounded-br-lg" />
+
+                                {isRunning && (
+                                    <div className="absolute top-[10%] left-1/2 -translate-x-1/2 px-4 py-1.5 glass-dark rounded-full border border-white/10 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Target Acquiring...</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
