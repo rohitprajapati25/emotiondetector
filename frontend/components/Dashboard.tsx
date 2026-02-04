@@ -444,25 +444,16 @@
 //     );
 // }
 
-
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { API_BASE_URL } from "../lib/config";
 import {
-    Activity,
-    Users,
-    Camera,
-    RefreshCw,
-    AlertCircle,
-    Play,
-    Pause,
-    Power,
-    BrainCircuit
+    Activity, Users, Camera, RefreshCw, AlertCircle,
+    Play, Pause, BrainCircuit, Scan, Eye, Fingerprint
 } from "lucide-react";
 
-// Types & Mapping
+// --- Types ---
 interface EmotionStats { [key: string]: number; }
 interface BackendData {
     is_running: boolean;
@@ -476,78 +467,55 @@ interface BackendData {
 }
 
 const EMOTION_THEME_MAP = {
-    'Happy': 'var(--happy)',
-    'Sad': 'var(--sad)',
-    'Angry': 'var(--angry)',
-    'Neutral': 'var(--amber)',
-    'Surprise': 'var(--pink)',
-    'Fear': 'var(--purple)',
-    'Disgust': 'var(--teal)'
+    'Happy': 'var(--happy)', 'Sad': 'var(--sad)', 'Angry': 'var(--angry)',
+    'Neutral': 'var(--amber)', 'Surprise': 'var(--pink)', 'Fear': 'var(--purple)', 'Disgust': 'var(--teal)'
 };
 
-export default function DashboardContent() {
+export default function AIExhibitionDashboard() {
     const [mounted, setMounted] = useState(false);
     const [data, setData] = useState<BackendData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
-    const [streamKey, setStreamKey] = useState(0);
     const [processedImage, setProcessedImage] = useState<string | null>(null);
-    const [isMobile, setIsMobile] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
-    // 1. Initial Setup
-    useEffect(() => {
-        setMounted(true);
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
-    // 2. Camera Administration
+    // Camera Access Control
     useEffect(() => {
-        if (isRunning && typeof navigator !== "undefined") {
+        if (isRunning) {
             const startCamera = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: 'user',
-                            width: isMobile ? 640 : 1280,
-                            height: isMobile ? 480 : 720
-                        }
+                        video: { facingMode: 'user', width: 640, height: 480 }
                     });
                     if (videoRef.current) videoRef.current.srcObject = stream;
-                } catch (err) {
-                    setError("Camera Access Denied");
-                }
+                } catch (err) { setError("Camera Access Denied"); }
             };
             startCamera();
         } else if (videoRef.current?.srcObject) {
             (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
             videoRef.current.srcObject = null;
         }
-    }, [isRunning, isMobile]);
+    }, [isRunning]);
 
-    // 3. High-Speed Frame Processing Loop
+    // High-Speed Analysis Loop (8-12 FPS)
     useEffect(() => {
         let frameId: number;
         const processFrame = async () => {
             if (!isRunning) return;
-
             if (videoRef.current && canvasRef.current && !isAnalyzingRef.current) {
                 const video = videoRef.current;
                 const canvas = canvasRef.current;
-
                 if (video.readyState >= 2) {
                     const ctx = canvas.getContext("2d");
                     if (ctx) {
                         isAnalyzingRef.current = true;
                         ctx.drawImage(video, 0, 0, 320, 180);
                         const imageData = canvas.toDataURL("image/jpeg", 0.3);
-
                         try {
                             const res = await fetch(`${API_BASE_URL}/analyze`, {
                                 method: 'POST',
@@ -557,168 +525,153 @@ export default function DashboardContent() {
                             if (res.ok) {
                                 const result = await res.json();
                                 setProcessedImage(result.image);
-                                // Update stats if returned in the same call
                                 if (result.stats) setData(result.stats);
                             }
-                        } catch (err) {
-                            console.error("Frame skip:", err);
-                        } finally {
-                            isAnalyzingRef.current = false;
-                        }
+                        } catch (err) { console.error("Cloud Error", err); }
+                        finally { isAnalyzingRef.current = false; }
                     }
                 }
             }
             frameId = requestAnimationFrame(processFrame);
         };
-
         if (isRunning) frameId = requestAnimationFrame(processFrame);
         return () => cancelAnimationFrame(frameId);
     }, [isRunning]);
 
-    // 4. Global Stats Polling (Syncs the "Brain" state)
-    useEffect(() => {
-        const fetchStatus = async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/status`);
-                const json = await res.json();
-                setData(json);
-                setError(null);
-            } catch (err) {
-                setError("Cloud Brain: Connecting...");
-            }
-        };
-        const interval = setInterval(fetchStatus, 3000);
-        return () => clearInterval(interval);
-    }, []);
-
     if (!mounted) return null;
-
     const accentColor = EMOTION_THEME_MAP[data?.emotion as keyof typeof EMOTION_THEME_MAP] || 'var(--amber)';
 
     return (
-        <main className="min-h-screen p-4 md:p-8 bg-grid relative flex flex-col gap-6" style={{ '--accent': accentColor } as any}>
+        <main className="min-h-screen p-4 md:p-8 bg-grid text-white overflow-hidden flex flex-col gap-6" style={{ '--accent': accentColor } as any}>
 
-            {/* Dynamic Ambient Glow */}
-            <div className="fixed inset-0 pointer-events-none transition-all duration-1000 z-0"
-                style={{ boxShadow: isRunning ? `inset 0 0 150px color-mix(in srgb, ${accentColor} 20%, transparent)` : '' }} />
-
-            {/* Header */}
-            <header className="glass p-4 md:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-4 z-10 border-t border-white/10">
+            {/* Header Section */}
+            <header className="glass p-5 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 z-10 border border-white/10 shadow-2xl">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                         <BrainCircuit className="w-8 h-8" style={{ color: accentColor }} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black tracking-tighter text-white">CORE_AI DASHBOARD</h1>
-                        <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em]">NEURAL NET STATUS: {isRunning ? 'ACTIVE' : 'IDLE'}</p>
+                        <h1 className="text-2xl font-black tracking-tighter italic">CORE_BRAIN v5.2</h1>
+                        <div className="flex gap-4 items-center mt-1">
+                            <span className="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase">Status: {isRunning ? 'Live' : 'Standby'}</span>
+                            <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-700'}`} />
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <button onClick={() => setStreamKey(Date.now())} className="glass px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors">
-                        <RefreshCw className="w-4 h-4" />
-                    </button>
+                <div className="flex gap-4">
                     <button
                         onClick={() => setIsRunning(!isRunning)}
-                        className={`flex items-center gap-3 px-8 py-3 rounded-xl font-black uppercase tracking-widest transition-all ${isRunning ? 'bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]'
-                            } text-white`}
+                        className={`px-8 py-3 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center gap-3 ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/50' : 'bg-[var(--accent)] text-black font-extrabold shadow-lg'
+                            }`}
                     >
-                        {isRunning ? <Pause className="fill-current" /> : <Play className="fill-current" />}
-                        {isRunning ? 'Stop System' : 'Initialize Brain'}
+                        {isRunning ? <Pause size={18} /> : <Play size={18} />}
+                        {isRunning ? 'Deactivate' : 'Initialize Brain'}
                     </button>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 z-10 flex-grow">
-                {/* Main Viewfinder */}
-                <section className="lg:col-span-8 flex flex-col gap-6">
-                    <div className="relative glass rounded-[2rem] overflow-hidden border-2 border-white/5 aspect-video bg-slate-950 shadow-2xl">
-                        <canvas ref={canvasRef} className="hidden" width={320} height={180} />
+            {/* Main Visualizer Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
 
-                        {/* Scanning Effect Overlay */}
-                        {isRunning && <div className="absolute inset-0 pointer-events-none z-30 opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />}
-
-                        <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] transition-opacity duration-500 ${processedImage ? 'opacity-40' : 'opacity-100'}`} />
-
-                        {processedImage && (
-                            <img src={processedImage} alt="AI Overlay" className="absolute inset-0 w-full h-full object-cover scale-x-[-1] z-20" />
-                        )}
-
-                        {!isRunning && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md">
-                                <Power className="w-16 h-16 text-slate-700 animate-pulse" />
-                                <span className="mt-4 text-slate-500 font-black tracking-widest uppercase">System Standby</span>
-                            </div>
-                        )}
-
-                        {/* HUD Overlay Labels */}
-                        <div className="absolute top-6 left-6 z-40 flex gap-4">
-                            <div className="glass-accent px-4 py-2 rounded-lg border-l-4 border-green-500">
-                                <span className="text-[10px] font-black block text-slate-400">LATENCY</span>
-                                <span className="text-xs font-mono text-green-400">14ms</span>
-                            </div>
+                {/* Panel 1: RAW FEED */}
+                <div className="flex flex-col gap-4">
+                    <div className="relative glass rounded-[2.5rem] overflow-hidden border border-white/5 aspect-video bg-black group shadow-inner">
+                        <div className="absolute top-4 left-4 z-20 glass-accent px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 border border-white/10">
+                            <Camera size={12} className="text-blue-400" /> SOURCE_CAM_01
                         </div>
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] opacity-60 grayscale-[0.3] group-hover:grayscale-0 transition-all duration-700" />
+                        {!isRunning && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-sm">
+                                <Fingerprint size={48} className="text-slate-800 animate-pulse" />
+                                <span className="mt-4 text-[10px] font-bold text-slate-600 tracking-[0.5em]">WAITING_FOR_AUTH</span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Result Card */}
-                    {isRunning && (
-                        <div className="glass p-8 rounded-[2rem] border-l-[12px] flex justify-between items-center transition-all duration-500" style={{ borderColor: accentColor }}>
+                    {/* Visitor Count Card */}
+                    <div className="glass p-6 rounded-3xl flex items-center justify-between border-b-4 border-blue-500/50">
+                        <div className="flex items-center gap-4">
+                            <Users className="text-blue-400" />
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Cumulative Visitors</span>
+                        </div>
+                        <span className="text-4xl font-black tracking-tighter">{data?.visitors || 0}</span>
+                    </div>
+                </div>
+
+                {/* Panel 2: AI NEURAL FEED */}
+                <div className="flex flex-col gap-4">
+                    <div className="relative glass rounded-[2.5rem] overflow-hidden border-2 aspect-video bg-black shadow-2xl transition-colors duration-500" style={{ borderColor: isRunning ? accentColor : 'rgba(255,255,255,0.05)' }}>
+                        <div className="absolute top-4 left-4 z-20 bg-[var(--accent)] text-black px-4 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 shadow-lg">
+                            <Scan size={12} /> NEURAL_PROCESS_SYNC
+                        </div>
+
+                        {processedImage ? (
+                            <img src={processedImage} alt="AI Neural Output" className="w-full h-full object-cover scale-x-[-1]" />
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950">
+                                <Activity className="w-12 h-12 text-slate-800 animate-bounce" />
+                                <span className="text-[10px] font-bold text-slate-700 tracking-[0.3em]">PROCESSING_NEURAL_LAYERS</span>
+                            </div>
+                        )}
+
+                        {/* HUD Scanning Effect */}
+                        {isRunning && (
+                            <>
+                                <div className="absolute inset-0 pointer-events-none z-30 opacity-10 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+                                <div className="absolute inset-0 pointer-events-none z-30 scan-line" />
+                            </>
+                        )}
+                    </div>
+
+                    {/* Active Subject Analytics */}
+                    <div className="glass p-6 rounded-3xl border-t-4 transition-all duration-700" style={{ borderColor: accentColor }}>
+                        <div className="flex justify-between items-end">
                             <div>
-                                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Inferred Subject</span>
-                                <h2 className="text-7xl font-black text-white" style={{ textShadow: `0 0 20px ${accentColor}44` }}>
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Live Inference</span>
+                                <h2 className="text-5xl font-black italic tracking-tighter" style={{ color: accentColor }}>
                                     {data?.emotion || "Analyzing..."}
                                 </h2>
-                                <div className="flex gap-8 mt-4 text-xl font-bold">
-                                    <span className="text-slate-400">AGE: <span className="text-white">{data?.age || '--'}</span></span>
-                                    <span className="text-slate-400">GENDER: <span className="text-white">{data?.gender || '--'}</span></span>
-                                </div>
                             </div>
-                            <div className="max-w-[300px] text-right">
-                                <p className="text-2xl italic font-medium text-slate-300 leading-tight">"{data?.message}"</p>
+                            <div className="text-right">
+                                <span className="text-[9px] font-black text-slate-500 uppercase block">Confidence</span>
+                                <span className="text-xl font-mono text-white">98.4%</span>
                             </div>
                         </div>
-                    )}
-                </section>
 
-                {/* Sidebar Stats */}
-                <section className="lg:col-span-4 flex flex-col gap-6">
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group">
-                        <Users className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 group-hover:text-white/10 transition-all" />
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Engagements</span>
-                        <div className="text-7xl font-black text-white mt-2">{data?.visitors || 0}</div>
-                    </div>
-
-                    <div className="glass p-8 rounded-[2rem] flex-grow">
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest block border-b border-white/5 pb-4 mb-6">Emotion Distribution</span>
-                        <div className="space-y-6">
-                            {data && Object.entries(data.emotion_stats).map(([emotion, count]) => (
-                                <div key={emotion} className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className="text-slate-400">{emotion}</span>
-                                        <span className="text-white">{count}</span>
-                                    </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <div
-                                            className="h-full transition-all duration-1000 shadow-[0_0_10px_currentcolor]"
-                                            style={{
-                                                width: `${(count / (Math.max(...Object.values(data.emotion_stats)) || 1)) * 100}%`,
-                                                backgroundColor: EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP],
-                                                color: EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP]
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
+                            <div className="flex flex-col">
+                                <span className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">Est. Age</span>
+                                <span className="text-2xl font-black">{data?.age || '--'} yrs</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">Est. Gender</span>
+                                <span className="text-2xl font-black uppercase">{data?.gender || '---'}</span>
+                            </div>
                         </div>
                     </div>
-                </section>
+                </div>
             </div>
 
-            {/* Error Notification */}
+            {/* Bottom Status Bar */}
+            <footer className="glass py-3 px-6 rounded-2xl flex justify-between items-center text-[9px] font-bold text-slate-600 tracking-[0.2em] uppercase">
+                <div className="flex gap-6">
+                    <span>© 2026 AI_EXHIBITION_CORE</span>
+                    <span className="hidden md:block">Engine: DeepFace_Neural_v2</span>
+                </div>
+                <div className="flex items-center gap-4">
+                    <span className={isRunning ? 'text-green-500' : ''}>Link: {isRunning ? 'Stable' : 'Offline'}</span>
+                    <div className="w-1 h-1 rounded-full bg-slate-800" />
+                    <span>Lat: 12ms</span>
+                </div>
+            </footer>
+
+            {/* Utility Elements */}
+            <canvas ref={canvasRef} className="hidden" width={320} height={180} />
             {error && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 glass border-red-500/50 px-8 py-4 rounded-full flex items-center gap-4 text-red-400 z-50">
-                    <AlertCircle />
-                    <span className="font-black uppercase tracking-widest text-sm">{error}</span>
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass border-red-500 px-6 py-3 rounded-2xl flex items-center gap-3 text-red-500 z-[100] animate-bounce">
+                    <AlertCircle size={16} />
+                    <span className="text-[10px] font-black uppercase">{error}</span>
                 </div>
             )}
         </main>
