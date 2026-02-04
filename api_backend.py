@@ -159,7 +159,8 @@ class DetectionState:
         try:
             with open("visitors.json", "w") as f:
                 json.dump({"total_visitors": self.total_visitors}, f)
-        except: pass
+        except Exception as e:
+            print(f"[ERR] Failed to save visitors: {e}")
 
 state = DetectionState()
 
@@ -364,6 +365,7 @@ def get_status(session_id: str = None):
             "emotion": state.emotion,
             "age": state.age,
             "gender": state.gender,
+            "visitors": state.total_visitors,
             "total_visitors": state.total_visitors,
             "active_visitors": len(state.active_sessions),
             "message": state.message,
@@ -371,6 +373,22 @@ def get_status(session_id: str = None):
             "emotion_stats": state.emotion_stats,
             "system_status": state.system_status
         }
+
+@app.post("/leave")
+async def leave(request: Request):
+    """Decrease active visitor count when session ends"""
+    try:
+        data = await request.json()
+        sid = data.get("session_id")
+        if sid:
+            with state.lock:
+                if sid in state.active_sessions:
+                    print(f"[SYS] session {sid} left.")
+                    del state.active_sessions[sid]
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"[ERR] Leave error: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/video_feed")
 def video_feed():

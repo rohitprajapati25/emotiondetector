@@ -64,6 +64,9 @@ export default function DashboardContent() {
             if (!id) {
                 id = Math.random().toString(36).substring(2, 15);
                 localStorage.setItem(key, id);
+                console.log("[AURA] Generated new session ID:", id);
+            } else {
+                console.log("[AURA] Using existing session ID:", id);
             }
             setSessionId(id);
         }
@@ -213,8 +216,16 @@ export default function DashboardContent() {
 
                 if (isMounted) {
                     setData(prev => {
-                        if (JSON.stringify(prev) === JSON.stringify(json)) return prev;
-                        return json;
+                        // MERGE: Keep analysis results but update global status/visitors
+                        const merged = {
+                            ...prev,
+                            ...json,
+                            // Priority to active analysis for these fields if they were updated recently
+                            emotion: (prev?.emotion && prev.emotion !== "Neutral") ? prev.emotion : json.emotion,
+                            message: (prev?.message && prev.message !== "Scanning...") ? prev.message : json.message
+                        };
+                        if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+                        return merged as BackendData;
                     });
                     setError(null);
                     setLoading(false);
@@ -513,7 +524,7 @@ export default function DashboardContent() {
                             <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
                             <div className="flex flex-col">
                                 <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter" title="Total unique visitors">
-                                    {data?.total_visitors || 0}
+                                    {(data?.total_visitors ?? data?.visitors) || 0}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
