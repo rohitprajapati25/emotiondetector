@@ -401,117 +401,120 @@ export default function DashboardContent() {
                             </div>
                         </div>
 
-                        {/* Subject Profile (Centerpiece) */}
-                        {isRunning && (
-                            <div className="absolute inset-x-4 bottom-4 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
-                                <div className="flex flex-col lg:flex-row items-end justify-between gap-6">
-                                    <div className="w-full lg:w-auto glass-dark p-6 md:p-10 rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
-                                                <div className="h-px w-12 bg-white/10" />
-                                            </div>
-                                            <span className="text-6xl md:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
-                                                {currentEmotion}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-12 mt-8 pt-8 border-t border-white/5">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Profile</span>
-                                                <span className="font-black text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-2">/</span> {data?.gender}</span>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Match</span>
-                                                <div className="flex items-end gap-1.5">
-                                                    <span className="font-black text-2xl text-white">96.8</span>
-                                                    <span className="text-[10px] text-indigo-500 font-black mb-1.5">%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                    </div>
+            </div>
 
-                                    {data?.message && (
-                                        <div className="hidden lg:block max-w-sm glass-dark p-6 rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-sm pointer-events-auto hover:text-white transition-colors">
-                                            <div className="flex items-center gap-2 mb-2 opacity-30">
-                                                <div className="w-10 h-[1px] bg-slate-400" />
-                                                <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
-                                            </div>
-                                            "{data.message}"
-                                        </div>
-                                    )}
+            {/* Subject Profile (Centerpiece - Moved below camera) */}
+            {isRunning && (
+                <div className="relative z-40 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-1000">
+                    <div className="flex flex-col lg:flex-row items-stretch justify-between gap-4 md:gap-6">
+                        <div className="w-full lg:flex-1 glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
+                                    <div className="h-px w-12 bg-white/10" />
                                 </div>
+                                <span className="text-6xl md:text-8xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
+                                    {currentEmotion}
+                                </span>
+                            </div>
+                            <div className="flex gap-12 mt-6 pt-6 border-t border-white/5">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Profile</span>
+                                    <span className="font-black text-xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-2">/</span> {data?.gender}</span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Match</span>
+                                    <div className="flex items-end gap-1.5">
+                                        <span className="font-black text-xl text-white">96.8</span>
+                                        <span className="text-[10px] text-indigo-500 font-black mb-1">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {data?.message && (
+                            <div className="w-full lg:w-1/3 glass-dark p-6 rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-sm pointer-events-auto hover:text-white transition-colors flex flex-col justify-center">
+                                <div className="flex items-center gap-2 mb-3 opacity-30">
+                                    <div className="w-10 h-[1px] bg-slate-400" />
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
+                                </div>
+                                "{data.message}"
                             </div>
                         )}
                     </div>
-                </section>
-
-                {/* Secondary Intelligence Panel */}
-                <section className="col-span-1 lg:col-span-4 flex flex-col gap-4 md:gap-6">
-                    {/* Visitor Matrix */}
-                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
-                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
-                        <div>
-                            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
-                            <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
-                        </div>
-                        <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
-                            <Users className="w-8 h-8" />
-                        </div>
-                    </div>
-
-                    {/* Spectral Distribution */}
-                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-8 flex-grow shadow-2xl">
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-1">
-                                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
-                                <div className="h-px w-20 bg-indigo-500/30" />
-                            </div>
-                            <Activity className="w-4 h-4 text-slate-700" />
-                        </div>
-
-                        <div className="flex flex-col gap-6">
-                            {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
-                                const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
-                                return (
-                                    <div key={emotion} className="group flex flex-col gap-2.5">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
-                                            <span className="text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
-                                        </div>
-                                        <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
-                                            <div
-                                                className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
-                                                style={{
-                                                    width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
-                                                    backgroundColor: color,
-                                                    boxShadow: `0 0 20px 2px ${color}33`
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Metadata Footer */}
-                    <div className="glass-dark p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
-                        <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]" />
-                            <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">System Operational</span>
-                        </div>
-                        <span className="text-[8px] font-mono text-slate-600">STABLE_v6.4.1</span>
-                    </div>
-                </section>
-            </div>
-
-            {error && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] glass-dark px-8 py-4 rounded-2xl border border-red-500/40 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-2xl">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-red-500">{error}</span>
                 </div>
             )}
-        </main>
+        </section>
+
+                {/* Secondary Intelligence Panel */ }
+    <section className="col-span-1 lg:col-span-4 flex flex-col gap-4 md:gap-6">
+        {/* Visitor Matrix */}
+        <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
+            <div>
+                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
+                <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
+            </div>
+            <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
+                <Users className="w-8 h-8" />
+            </div>
+        </div>
+
+        {/* Spectral Distribution */}
+        <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-8 flex-grow shadow-2xl">
+            <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                    <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
+                    <div className="h-px w-20 bg-indigo-500/30" />
+                </div>
+                <Activity className="w-4 h-4 text-slate-700" />
+            </div>
+
+            <div className="flex flex-col gap-6">
+                {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
+                    const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
+                    return (
+                        <div key={emotion} className="group flex flex-col gap-2.5">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
+                                <span className="text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
+                            </div>
+                            <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                                <div
+                                    className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
+                                    style={{
+                                        width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
+                                        backgroundColor: color,
+                                        boxShadow: `0 0 20px 2px ${color}33`
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+
+        {/* Metadata Footer */}
+        <div className="glass-dark p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]" />
+                <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">System Operational</span>
+            </div>
+            <span className="text-[8px] font-mono text-slate-600">STABLE_v6.4.1</span>
+        </div>
+    </section>
+            </div >
+
+        { error && (
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] glass-dark px-8 py-4 rounded-2xl border border-red-500/40 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-2xl">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-red-500">{error}</span>
+            </div>
+        )
+}
+        </main >
     );
 }
 
