@@ -452,7 +452,7 @@ import { useEffect, useState, useRef } from "react";
 import { API_BASE_URL } from "../lib/config";
 import {
     Activity, Users, Camera, RefreshCw, AlertCircle,
-    Play, Pause, Power, BrainCircuit, Scan, Fingerprint
+    Play, Pause, BrainCircuit, Scan, Fingerprint, BarChart3
 } from "lucide-react";
 
 // --- Types ---
@@ -487,7 +487,7 @@ export default function DashboardContent() {
 
     useEffect(() => {
         setMounted(true);
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -499,7 +499,7 @@ export default function DashboardContent() {
             const startCamera = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'user', width: 640, height: 480 }
+                        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
                     });
                     if (videoRef.current) videoRef.current.srcObject = stream;
                 } catch (err) { setError("Camera Access Denied"); }
@@ -551,61 +551,61 @@ export default function DashboardContent() {
     const accentColor = EMOTION_THEME_MAP[data?.emotion as keyof typeof EMOTION_THEME_MAP] || 'var(--amber)';
 
     return (
-        <main className="min-h-screen p-4 md:p-8 bg-grid text-white flex flex-col gap-6" style={{ '--accent': accentColor } as any}>
+        <main className="min-h-screen p-4 md:p-6 lg:p-8 bg-grid text-white flex flex-col gap-4 md:gap-6 overflow-x-hidden" style={{ '--accent': accentColor } as any}>
 
-            {/* Header */}
-            <header className="glass p-5 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 z-10 border border-white/10 shadow-2xl">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                        <BrainCircuit className="w-8 h-8" style={{ color: accentColor }} />
+            {/* Header - Fully Responsive Stack */}
+            <header className="glass p-4 md:p-5 rounded-2xl md:rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 z-10 border border-white/10 shadow-2xl">
+                <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div className="p-2 md:p-3 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <BrainCircuit className="w-6 h-6 md:w-8 md:h-8" style={{ color: accentColor }} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black tracking-tighter italic">CORE_BRAIN v5.2</h1>
-                        <p className="text-[10px] text-slate-500 font-bold tracking-[0.4em]">STATUS: {isRunning ? 'RUNNING' : 'STANDBY'}</p>
+                        <h1 className="text-xl md:text-2xl font-black tracking-tighter italic">CORE_BRAIN v5.2</h1>
+                        <p className="text-[8px] md:text-[10px] text-slate-500 font-bold tracking-[0.4em]">STATUS: {isRunning ? 'RUNNING' : 'STANDBY'}</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setIsRunning(!isRunning)}
-                    className={`px-10 py-3 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center gap-3 ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/50' : 'bg-green-500 text-black shadow-lg shadow-green-500/20'
+                    className={`w-full md:w-auto px-6 md:px-10 py-3 rounded-xl md:rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/50' : 'bg-green-500 text-black shadow-lg shadow-green-500/20'
                         }`}
                 >
-                    {isRunning ? <Pause /> : <Play />} {isRunning ? 'Shutdown' : 'Start AI'}
+                    {isRunning ? <Pause size={18} /> : <Play size={18} />} {isRunning ? 'Shutdown' : 'Start AI'}
                 </button>
             </header>
 
-            {/* Split Feed Layout (MATCHING YOUR IMAGE) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
+            {/* Split Feed Layout - Stack on Mobile, Side-by-Side on Desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 flex-grow">
 
                 {/* Left: SOURCE_CAM_01 */}
-                <div className="relative glass rounded-[2rem] overflow-hidden border border-white/5 aspect-video bg-[#05070a] group">
-                    <div className="absolute top-4 left-4 z-20 glass-accent px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 border border-white/10">
-                        <Camera size={12} className="text-blue-400" /> SOURCE_CAM_01
+                <div className="relative glass rounded-[1.5rem] md:rounded-[2rem] overflow-hidden border border-white/5 aspect-video bg-[#05070a] group">
+                    <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20 glass-accent px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black flex items-center gap-2 border border-white/10">
+                        <Camera size={10} className="text-blue-400" /> SOURCE_CAM_01
                     </div>
 
                     {isRunning ? (
                         <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] opacity-70 group-hover:opacity-100 transition-opacity duration-700" />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                            <Fingerprint size={48} className="text-slate-800 animate-pulse" />
-                            <span className="text-[10px] font-bold text-slate-700 tracking-[0.4em] uppercase">Waiting_For_Auth</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-4">
+                            <Fingerprint size={40} className="text-slate-800 animate-pulse md:w-12 md:h-12" />
+                            <span className="text-[8px] md:text-[10px] font-bold text-slate-700 tracking-[0.4em] uppercase">Waiting_For_Auth</span>
                         </div>
                     )}
                 </div>
 
                 {/* Right: NEURAL_PROCESS_SYNC */}
-                <div className="relative glass rounded-[2rem] overflow-hidden border-2 aspect-video bg-black shadow-2xl transition-all duration-500"
+                <div className="relative glass rounded-[1.5rem] md:rounded-[2rem] overflow-hidden border-2 aspect-video bg-black shadow-2xl transition-all duration-500"
                     style={{ borderColor: isRunning ? accentColor : 'rgba(255,255,255,0.05)' }}>
 
-                    <div className="absolute top-4 left-4 z-20 bg-[#f59e0b] text-black px-4 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 shadow-lg">
-                        <Scan size={12} /> NEURAL_PROCESS_SYNC
+                    <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20 bg-[#f59e0b] text-black px-3 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black flex items-center gap-2 shadow-lg">
+                        <Scan size={10} /> NEURAL_PROCESS_SYNC
                     </div>
 
                     {processedImage ? (
                         <img src={processedImage} alt="AI Neural Output" className="w-full h-full object-cover scale-x-[-1]" />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                            <Activity className="w-12 h-12 text-slate-800 animate-pulse" />
-                            <span className="text-[10px] font-bold text-slate-700 tracking-[0.3em]">PROCESSING_NEURAL_LAYERS</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-4">
+                            <Activity className="w-10 h-10 md:w-12 md:h-12 text-slate-800 animate-pulse" />
+                            <span className="text-[8px] md:text-[10px] font-bold text-slate-700 tracking-[0.3em]">PROCESSING_NEURAL_LAYERS</span>
                         </div>
                     )}
 
@@ -614,33 +614,52 @@ export default function DashboardContent() {
                 </div>
             </div>
 
-            {/* Bottom HUD Analytics */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-8 glass p-8 rounded-[2.5rem] border-t-4 transition-all duration-700" style={{ borderColor: accentColor }}>
-                    <div className="flex flex-col md:flex-row justify-between items-end">
-                        <div>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Subject Identification</span>
-                            <h2 className="text-7xl font-black italic tracking-tighter" style={{ color: accentColor }}>
+            {/* AI Progress Bar & Analytics Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+
+                {/* Result Info Card */}
+                <div className="lg:col-span-8 glass p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border-t-4 transition-all duration-700" style={{ borderColor: accentColor }}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6">
+                        <div className="w-full">
+                            <span className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block text-center md:text-left">Inferred Subject</span>
+                            <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-center md:text-left" style={{ color: accentColor }}>
                                 {data?.emotion || "Analyzing..."}
                             </h2>
-                            <div className="flex gap-10 mt-6">
-                                <div className="flex flex-col"><span className="text-slate-600 text-[10px] font-bold uppercase">Age</span><span className="text-3xl font-black">{data?.age || '--'}</span></div>
-                                <div className="flex flex-col"><span className="text-slate-600 text-[10px] font-bold uppercase">Gender</span><span className="text-3xl font-black uppercase">{data?.gender || '---'}</span></div>
+
+                            {/* NEW: Neural Progress Bar */}
+                            <div className="mt-6 space-y-2">
+                                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                    <span className="text-slate-500 flex items-center gap-2"><BarChart3 size={12} /> Analysis Progress</span>
+                                    <span style={{ color: accentColor }}>{isRunning ? '94%' : '0%'}</span>
+                                </div>
+                                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
+                                    <div
+                                        className="h-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+                                        style={{
+                                            width: isRunning ? '94%' : '0%',
+                                            backgroundColor: accentColor,
+                                            boxShadow: `0 0 20px ${accentColor}44`
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                        <div className="glass-accent p-6 rounded-3xl max-w-sm border-l-4 border-white/20">
-                            <p className="text-xl italic font-semibold text-slate-300">"{data?.message || 'Ready for Analysis'}"</p>
+
+                            <div className="flex justify-center md:justify-start gap-8 md:gap-10 mt-6 pt-6 border-t border-white/5">
+                                <div className="flex flex-col"><span className="text-slate-600 text-[8px] md:text-[10px] font-bold uppercase">Age</span><span className="text-2xl md:text-3xl font-black">{data?.age || '--'}</span></div>
+                                <div className="flex flex-col"><span className="text-slate-600 text-[8px] md:text-[10px] font-bold uppercase">Gender</span><span className="text-2xl md:text-3xl font-black uppercase">{data?.gender || '---'}</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    <div className="glass p-8 rounded-[2rem] flex items-center justify-between group hover:border-[var(--accent)] transition-all">
+                {/* Visitor Counter Card */}
+                <div className="lg:col-span-4 flex flex-col gap-4 md:gap-6">
+                    <div className="glass p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between group hover:border-[var(--accent)] transition-all flex-grow">
                         <div>
-                            <span className="text-xs font-black text-slate-500 uppercase">Total Visitors</span>
-                            <div className="text-6xl font-black mt-1 group-hover:scale-110 transition-transform">{data?.visitors || 0}</div>
+                            <span className="text-[10px] md:text-xs font-black text-slate-500 uppercase">Total Visitors</span>
+                            <div className="text-5xl md:text-6xl font-black mt-1 group-hover:scale-105 transition-transform">{data?.visitors || 0}</div>
                         </div>
-                        <Users className="w-12 h-12 text-slate-700" />
+                        <Users className="w-10 h-10 md:w-12 md:h-12 text-slate-700" />
                     </div>
                 </div>
             </div>
