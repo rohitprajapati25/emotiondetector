@@ -318,8 +318,8 @@ export default function DashboardContent() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
 
                 {/* Left Column: Input Source & Live Results */}
-                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6">
-                    <div className="glass rounded-3xl overflow-hidden relative flex-grow min-h-[300px] md:min-h-[500px] border-2 transition-colors duration-1000" style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
+                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
+                    <div className="glass rounded-3xl overflow-hidden relative flex-grow min-h-[300px] md:min-h-[600px] border-2 transition-colors duration-1000" style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
 
                         {/* Camera Preview */}
                         <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
@@ -371,35 +371,35 @@ export default function DashboardContent() {
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        {/* Floating Results HUD - Optimized for mobile (Stacks below video on small screens) */}
-                        {isRunning && (
-                            <div className="md:absolute static inset-x-0 md:inset-x-8 bottom-0 md:bottom-8 flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 md:gap-6 pointer-events-none p-4 md:p-0 bg-slate-900/50 md:bg-transparent backdrop-blur-lg md:backdrop-blur-none border-t border-white/5 md:border-none">
-                                <div className="glass p-4 md:p-8 rounded-2xl flex flex-col gap-1 md:gap-2 min-w-0 md:min-w-[340px] border-l-4 md:border-l-8 backdrop-blur-2xl shadow-2xl transition-all duration-1000 pointer-events-auto" style={{ borderColor: accentColor }}>
-                                    <span className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] font-black text-slate-500">Active Subject</span>
-                                    <span className="text-3xl md:text-7xl font-black leading-none transition-all duration-1000" style={{ color: accentColor }}>
-                                        {currentEmotion}
-                                    </span>
-                                    <div className="flex gap-4 md:gap-6 mt-2 md:mt-4 pt-2 md:pt-4 border-t border-white/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Age Group</span>
-                                            <span className="font-bold text-xs md:text-lg">{data?.age}</span>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Bio Gender</span>
-                                            <span className="font-bold text-xs md:text-lg">{data?.gender}</span>
-                                        </div>
+                    {/* Mobile-First Result HUD - Stacks below on mobile, floats on desktop */}
+                    {isRunning && (
+                        <div className="lg:absolute lg:inset-x-8 lg:bottom-8 static flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 md:gap-6 pointer-events-none mt-2 lg:mt-0 z-20">
+                            <div className="glass p-4 md:p-8 rounded-2xl flex flex-col gap-1 md:gap-2 min-w-0 md:min-w-[340px] border-l-4 md:border-l-8 backdrop-blur-2xl shadow-2xl transition-all duration-1000 pointer-events-auto" style={{ borderColor: accentColor }}>
+                                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] font-black text-slate-500">Active Subject</span>
+                                <span className="text-3xl md:text-7xl font-black leading-none transition-all duration-1000" style={{ color: accentColor }}>
+                                    {currentEmotion}
+                                </span>
+                                <div className="flex gap-4 md:gap-6 mt-2 md:mt-4 pt-4 border-t border-white/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Age Group</span>
+                                        <span className="font-bold text-sm md:text-lg">{data?.age}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Bio Gender</span>
+                                        <span className="font-bold text-sm md:text-lg">{data?.gender}</span>
                                     </div>
                                 </div>
-
-                                <div className="glass p-3 md:p-6 rounded-2xl max-w-full lg:max-w-sm text-center lg:text-right backdrop-blur-2xl border border-white/10 shadow-2xl pointer-events-auto">
-                                    <p className="text-xs md:text-xl italic font-semibold leading-relaxed text-slate-200">
-                                        {data?.message}
-                                    </p>
-                                </div>
                             </div>
-                        )}
-                    </div>
+
+                            <div className="glass p-4 md:p-6 rounded-2xl max-w-full lg:max-w-sm text-center lg:text-right backdrop-blur-2xl border border-white/10 shadow-2xl pointer-events-auto">
+                                <p className="text-sm md:text-xl italic font-semibold leading-relaxed text-slate-200">
+                                    {data?.message}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* Right Column: Historical Stats */}
