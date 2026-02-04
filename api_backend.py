@@ -299,14 +299,16 @@ def camera_worker():
             
             res_data, processed_frame = process_frame_logic(frame, running)
             
-            if running and res_data.get("emotion") != "Neutral" and not state.analysis_complete:
+            if running and res_data.get("status") == "Face Locked":
                  # Update stats for local tracking
                  with state.lock:
                      state.emotion = res_data["emotion"]
-                     state.emotion_stats[res_data["emotion"]] += 1
-                     state.visitors += 1
+                     state.heatmap = res_data["heatmap"]
+                     state.message = res_data["message"]
                      state.age = res_data["age"]
                      state.gender = res_data["gender"]
+                     state.emotion_stats[res_data["emotion"]] += 1
+                     state.visitors += 1
             
             _, buf = cv2.imencode('.jpg', processed_frame)
             with state.lock: state.current_frame = buf.tobytes()
@@ -363,10 +365,15 @@ async def analyze(request: Request):
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
         # Update global stats for monitoring
-        if res_data.get("emotion") != "Neutral":
+        if res_data.get("status") == "Face Locked":
             with state.lock:
-                state.visitors += 1
+                state.emotion = res_data["emotion"]
+                state.heatmap = res_data["heatmap"]
+                state.message = res_data["message"]
+                state.age = res_data["age"]
+                state.gender = res_data["gender"]
                 state.emotion_stats[res_data["emotion"]] += 1
+                state.visitors += 1
 
         return {
             "status": "ok",

@@ -150,6 +150,19 @@ export default function DashboardContent() {
                                 if (res.ok) {
                                     const result = await res.json();
                                     setProcessedImage(result.image);
+
+                                    // NEW: Sync local data state with analyzed result for instant UI update
+                                    if (result.data) {
+                                        setData(prev => ({
+                                            ...prev!,
+                                            emotion: result.data.emotion,
+                                            age: result.data.age,
+                                            gender: result.data.gender,
+                                            heatmap: result.data.heatmap,
+                                            message: result.data.message,
+                                            is_running: true
+                                        }));
+                                    }
                                 }
                             } catch (err) {
                                 console.error("Cloud Analytics error:", err);
