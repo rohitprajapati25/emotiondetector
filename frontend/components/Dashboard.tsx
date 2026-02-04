@@ -412,7 +412,13 @@ export default function DashboardContent() {
                                 <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-white/5">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Profile</span>
-                                        <span className="font-black text-lg text-white">{data?.age} <span className="text-slate-600 font-light mx-1">/</span> {data?.gender}</span>
+                                        <span className="font-black text-lg text-white">
+                                            {(data?.age && data.age !== "N/A") ? (
+                                                <>{data.age} <span className="text-slate-600 font-light mx-1">/</span> {data.gender}</>
+                                            ) : (
+                                                <span className="text-slate-500 animate-pulse">Scanning...</span>
+                                            )}
+                                        </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Match</span>
@@ -426,14 +432,16 @@ export default function DashboardContent() {
 
                             {/* AI Synthesis Message */}
                             {data?.message && (
-                                <div className="w-full md:max-w-xs glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 backdrop-blur-3xl flex flex-col justify-center">
+                                <div className="w-full md:max-w-xs glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl flex flex-col justify-center relative overflow-hidden group/synthesis">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover/synthesis:opacity-100 transition-opacity duration-700" />
                                     <div className="flex items-center gap-2 mb-3 opacity-30">
-                                        <div className="w-8 h-[1px] bg-slate-400" />
+                                        <div className="w-8 h-[1px] bg-slate-400 group-hover/synthesis:w-12 transition-all duration-700" />
                                         <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
                                     </div>
-                                    <p className="italic text-slate-300 font-medium leading-relaxed text-sm">
+                                    <p className="italic text-slate-300 font-medium leading-relaxed text-sm relative z-10 transition-transform duration-500 group-hover/synthesis:scale-[1.02]">
                                         "{data.message}"
                                     </p>
+                                    <div className="absolute bottom-0 left-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent w-full" />
                                 </div>
                             )}
                         </div>

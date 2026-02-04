@@ -203,8 +203,8 @@ def process_frame_logic(frame, running_ai=True):
         "status": "No Face Detected"
     }
 
-    # Expanded ROI for better mobile usability (now 85% height, 80% width)
-    roi_h, roi_w = int(h * 0.85), int(w * 0.8)
+    # Expanded ROI for better mobile usability (now 90% height, 90% width)
+    roi_h, roi_w = int(h * 0.90), int(w * 0.90)
     roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
     roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
     
