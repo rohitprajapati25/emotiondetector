@@ -54,15 +54,19 @@ export default function DashboardContent() {
     const [error, setError] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false);
 
-    // Generate/Persistent Session ID for unique visitor tracking
-    const sessionId = useMemo(() => {
-        const key = 'aura_session_id';
-        let id = localStorage.getItem(key);
-        if (!id) {
-            id = Math.random().toString(36).substring(2, 15);
-            localStorage.setItem(key, id);
+    // Visitor Counter: SSR-safe Session ID Initialization
+    const [sessionId, setSessionId] = useState<string>("");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const key = 'aura_session_id';
+            let id = localStorage.getItem(key);
+            if (!id) {
+                id = Math.random().toString(36).substring(2, 15);
+                localStorage.setItem(key, id);
+            }
+            setSessionId(id);
         }
-        return id;
     }, []);
     const [loading, setLoading] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
@@ -201,6 +205,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let isMounted = true;
         const fetchStatus = async () => {
+            if (!sessionId) return; // Wait for session ID initialization
             try {
                 const res = await fetch(`${API_BASE_URL}/status?session_id=${sessionId}`);
                 if (!res.ok) throw new Error("Backend connection failed");
@@ -225,7 +230,37 @@ export default function DashboardContent() {
             isMounted = false;
             clearInterval(interval);
         };
-    }, []);
+    }, [sessionId]);
+
+    // Visitor Counter: Live Tracking (Leave logic)
+    // Decrement active_visitors when user closes tab, refreshes, or hides tab
+    useEffect(() => {
+        if (!sessionId) return;
+
+        const handleLeave = () => {
+            if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+                const url = `${API_BASE_URL}/leave`;
+                const payload = JSON.stringify({ session_id: sessionId });
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon(url, blob);
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                handleLeave();
+            }
+        };
+
+        // Event listeners for leaving/hiding
+        window.addEventListener("beforeunload", handleLeave);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleLeave);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, [sessionId]);
 
     const toggleSystem = async (command: 'start' | 'stop') => {
         try {
