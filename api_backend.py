@@ -61,38 +61,6 @@ def draw_neural_dots(frame, box):
     cv2.line(frame, ree, pt(0.5, 0.55), (100, 100, 100), 1)
     cv2.line(frame, pt(0.5, 0.55), pt(0.5, 0.75), (100, 100, 100), 1)
 
-def draw_text_mirrored(frame, text, pos, font, scale, color, thickness):
-    """Draws text that will be READABLE after the frontend mirrors the image"""
-    (tw, th), _ = cv2.getTextSize(text, font, scale, thickness)
-    x, y = pos
-    
-    # Create text surface with padding
-    txt_surf = np.zeros((th + 20, tw + 20, 3), dtype=np.uint8)
-    cv2.putText(txt_surf, text, (10, th + 10), font, scale, color, thickness)
-    
-    # Flip the text image horizontally (mirrored for the backend, readable after frontend flip)
-    txt_surf = cv2.flip(txt_surf, 1)
-    
-    # Calculate target ROI on frame
-    h, w = frame.shape[:2]
-    y_start = max(0, y - th - 15)
-    y_end = min(h, y_start + txt_surf.shape[0])
-    x_start = max(0, x - 10)
-    x_end = min(w, x_start + txt_surf.shape[1])
-    
-    # Crop surfaces to match
-    overlay = txt_surf[0:y_end-y_start, 0:x_end-x_start]
-    roi = frame[y_start:y_end, x_start:x_end]
-    
-    # Alpha-like blending using masks
-    gray = cv2.cvtColor(overlay, cv2.COLOR_BGR2GRAY)
-    _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
-    mask_inv = cv2.bitwise_not(mask)
-    
-    img_bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
-    img_fg = cv2.bitwise_and(overlay, overlay, mask=mask)
-    frame[y_start:y_end, x_start:x_end] = cv2.add(img_bg, img_fg)
-
 MEDIAPIPE_ENABLED = False # Using Stable Neural Overlay instead
 
 # ============================================================================
@@ -177,7 +145,6 @@ class DetectionState:
         self.is_running = False
         self.camera_url = ""
         self.emotion = "Neutral"
-        self.confidence = 0.0
         self.age = "N/A"
         self.gender = "N/A"
         self.visitors = 0
@@ -233,18 +200,26 @@ def process_frame_logic(frame, running_ai=True):
         "gender": "N/A",
         "heatmap": "amber",
         "message": "Scanning...",
-        "status": "No Face Detected",
-        "confidence": 0.0
+        "status": "No Face Detected"
     }
+
+    # Optimized ROI for "Real Human Face Size"
+    roi_h, roi_w = int(h * 0.75), int(w * 0.5)
+    roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
+    roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
+    
+    cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
     
-    found_face = faces[0] if len(faces) > 0 else None
-    
-    # Mark but don't restrict other faces
-    if len(faces) > 1:
-        for (x, y, fw, fh) in faces[1:]:
+    found_face = None
+    for (x, y, fw, fh) in faces:
+        cx, cy = x + fw//2, y + fh//2
+        if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
+            found_face = (x, y, fw, fh)
+            break
+        else:
             cv2.rectangle(frame, (x, y), (x+fw, y+fh), (60, 60, 60), 1)
 
     if found_face:
@@ -271,20 +246,13 @@ def process_frame_logic(frame, running_ai=True):
                         "age": age,
                         "gender": gen,
                         "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
-                        "message": EMOTION_MESSAGES.get(final_emo, "Done"),
-                        "confidence": float(np.max(pred) * 100)
+                        "message": EMOTION_MESSAGES.get(final_emo, "Done")
                     })
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    draw_text_mirrored(frame, final_emo, (x, y), 
-                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-                    
-                    with state.lock:
-                        state.emotion = final_emo
-                        state.confidence = result_data["confidence"]
-                        state.heatmap = result_data["heatmap"]
-                        state.message = result_data["message"]
+                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     else:
         result_data["message"] = "Please step into the Zone"
 
@@ -320,15 +288,14 @@ def camera_worker():
                 time.sleep(1)
                 continue
 
-            if cap:
-                ret, frame = cap.read()
-                if not ret:
-                    cap.release(); cap = None
-                    continue
+        if cap:
+            ret, frame = cap.read()
+            if not ret:
+                cap.release(); cap = None
+                continue
 
-                # Removed: frame = cv2.flip(frame, 1)
-                # We move mirroring entirely to the frontend for CSS-based consistency.
-                frame = cv2.resize(frame, (640, 360))
+            frame = cv2.flip(frame, 1)
+            frame = cv2.resize(frame, (640, 360))
             
             res_data, processed_frame = process_frame_logic(frame, running)
             
@@ -426,7 +393,6 @@ def get_status():
             "is_running": state.is_running,
             "camera_url": state.camera_url,
             "emotion": state.emotion,
-            "confidence": state.confidence,
             "age": state.age,
             "gender": state.gender,
             "visitors": state.visitors,

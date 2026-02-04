@@ -150,20 +150,6 @@ export default function DashboardContent() {
                                 if (res.ok) {
                                     const result = await res.json();
                                     setProcessedImage(result.image);
-
-                                    // SAFELY merge analysis results without wiping out stats
-                                    if (result.data) {
-                                        setData(prev => {
-                                            if (!prev) return prev; // Wait for initial status poll
-                                            return {
-                                                ...prev,
-                                                emotion: result.data.emotion || prev.emotion,
-                                                confidence: result.data.confidence !== undefined ? result.data.confidence : (prev as any).confidence,
-                                                message: result.data.message || prev.message,
-                                                heatmap: result.data.heatmap || prev.heatmap
-                                            };
-                                        });
-                                    }
                                 }
                             } catch (err) {
                                 console.error("Cloud Analytics error:", err);
@@ -337,142 +323,153 @@ export default function DashboardContent() {
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 flex-grow">
 
                 {/* Primary Observer Panel */}
-                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
-                    {/* Dual Feed Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                        {/* Live Local Feed */}
-                        <div className="group rounded-[2rem] overflow-hidden relative aspect-video border border-white/10 bg-black backdrop-blur-md shadow-xl transition-all">
-                            <div className="absolute top-3 left-3 z-[20] px-2 py-1 glass-dark rounded-lg border border-white/10 text-[7px] font-black text-slate-400 tracking-widest uppercase flex items-center gap-2">
-                                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                Live_Stream
-                            </div>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover"
-                                style={{ transform: 'scaleX(-1)' }}
-                            />
-                            {!isRunning && (
-                                <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center pointer-events-none">
-                                    <Power className="w-8 h-8 text-slate-800" />
-                                </div>
-                            )}
-                        </div>
+                <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 relative">
+                    <div className={`group rounded-[3rem] overflow-hidden relative flex-grow min-h-[420px] md:min-h-[580px] border border-white/10 bg-slate-950/40 backdrop-blur-md shadow-2xl transition-all duration-1000`} style={{ boxShadow: isRunning ? `0 0 80px -40px ${accentColor}66` : 'none' }}>
 
-                        {/* AI Analysis Feed */}
-                        <div className={`group rounded-[2rem] overflow-hidden relative aspect-video border border-white/10 bg-black backdrop-blur-md shadow-xl transition-all duration-1000`} style={{ boxShadow: isRunning ? `0 0 40px -20px ${accentColor}44` : 'none' }}>
-                            <div className="absolute top-3 left-3 z-[30] px-2 py-1 glass-dark rounded-lg border border-white/10 text-[7px] font-black text-slate-400 tracking-widest uppercase flex items-center gap-2">
-                                <Activity className="w-3 h-3" style={{ color: accentColor }} />
-                                Neural_Feed
-                            </div>
-                            <canvas ref={canvasRef} style={{ display: 'none' }} />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                        {/* Video Layer Container */}
+                        <div className="absolute inset-0">
+                            {isRunning && !isLocalHost && (
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className={`w-full h-full object-cover transition-all duration-1000 ${processedImage ? 'opacity-40 scale-105' : 'opacity-100 scale-100'}`}
+                                    style={{ transform: 'scaleX(-1)' }}
+                                />
+                            )}
                             {isRunning && (
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`w-full h-full object-cover transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
                                     style={{ transform: 'scaleX(-1)' }}
-                                    alt="Analysis Feed"
+                                    alt="Vision Feed"
                                     key={streamKey}
                                 />
                             )}
                             {!isRunning && (
-                                <div className="absolute inset-0 bg-[#020617] flex items-center justify-center">
-                                    <Activity className="w-8 h-8 text-slate-800" />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-[#020617]">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-indigo-500/10 blur-3xl rounded-full" />
+                                        <Power className="w-16 h-16 text-slate-800 relative z-10" />
+                                    </div>
+                                    <div className="flex flex-col items-center gap-2">
+                                        <p className="font-black uppercase tracking-[0.5em] text-[10px] text-slate-600">Visual Core Disconnected</p>
+                                        <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                                    </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* HUD Interface Overlays */}
+                        <div className="absolute inset-0 pointer-events-none z-20">
                             {/* Scanning Anim */}
                             {isRunning && (
                                 <div className="absolute inset-x-0 h-[2px] bg-white/20 blur-[2px] animate-[scan_4s_linear_infinite] z-30" />
                             )}
-                        </div>
-                    </div>
 
-                    {/* Subject Intelligence HUD - Now below camera */}
-                    {isRunning && (
-                        <div className="w-full flex flex-col gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
-                                <div className="col-span-1 md:col-span-7 glass-dark p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/10 shadow-2xl transition-all duration-700 hover:scale-[1.01]">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
-                                            <div className="h-px flex-grow bg-white/10" />
-                                        </div>
-                                        <span className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter transition-all duration-1000 ease-out" style={{ color: accentColor, textShadow: `0 0 30px ${accentColor}44` }}>
-                                            {isRunning ? currentEmotion : 'Offline'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-slate-500 text-[9px] md:text-[10px] font-black uppercase tracking-widest">Analysis Mode</span>
-                                            <span className="font-black text-xl md:text-2xl text-white tracking-tight">Active Expression Tracking</span>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-0.5 ml-auto text-right">
-                                            <span className="text-slate-500 text-[9px] md:text-[10px] font-black uppercase tracking-widest">Confidence Score</span>
-                                            <div className="flex items-end gap-1">
-                                                <span className="font-black text-2xl md:text-3xl text-indigo-400">{(data as any)?.confidence?.toFixed(1) || '0.0'}</span>
-                                                <span className="text-[10px] text-indigo-500/50 font-black mb-1.5">%</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                            {/* Corner Accents */}
+                            <div className="absolute top-8 left-8 p-3 glass-dark rounded-2xl border border-white/10 flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-indigo-500 animate-pulse' : 'bg-slate-700'}`} />
+                                <span className="text-[9px] font-black tracking-[0.3em] text-slate-400 uppercase">Input_Main</span>
+                                <div className="w-px h-3 bg-white/10" />
+                                <span className="text-[9px] font-mono text-slate-500">RES: 1280x720</span>
+                            </div>
+
+                            <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
+                                <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-black text-slate-500 tracking-widest uppercase">
+                                    Encrypted_X2
                                 </div>
-
-                                <div className="col-span-1 md:col-span-5 flex flex-col gap-4">
-                                    <div className="glass-dark p-6 rounded-3xl border border-white/5 flex-grow backdrop-blur-3xl shadow-xl flex flex-col justify-center gap-4">
-                                        <div className="flex items-center gap-3 opacity-40">
-                                            <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">AI Synthesis</span>
-                                            <div className="h-px flex-grow bg-white/10" />
-                                        </div>
-                                        <p className="text-sm md:text-base text-slate-200 font-medium italic leading-relaxed">
-                                            {data?.message || "Analyzing neutral patterns in environmental data..."}
-                                        </p>
-                                    </div>
+                                <div className="px-3 py-1.5 glass-dark rounded-xl border border-white/5 text-[8px] font-mono text-indigo-400/70">
+                                    0x7F_SYNC_445
                                 </div>
                             </div>
                         </div>
-                    )}
+
+                        {/* Subject Profile (Centerpiece) */}
+                        {isRunning && (
+                            <div className="absolute inset-x-2 bottom-2 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
+                                <div className="flex flex-col lg:flex-row items-end justify-between gap-4 md:gap-6">
+                                    <div className="w-full lg:w-auto glass-dark p-4 md:p-10 rounded-2xl md:rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
+                                        <div className="flex flex-col gap-1 md:gap-2">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] md:tracking-[0.4em] font-black text-slate-500">Current Aura</span>
+                                                <div className="h-px w-8 md:w-12 bg-white/10" />
+                                            </div>
+                                            <span className="text-4xl md:text-6xl lg:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: isMobile ? `0 0 20px ${accentColor}44` : `0 0 40px ${accentColor}44` }}>
+                                                {currentEmotion}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-6 md:gap-12 mt-4 md:mt-8 pt-4 md:pt-8 border-t border-white/5">
+                                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                                <span className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Profile</span>
+                                                <span className="font-black text-base md:text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-1 md:mx-2">/</span> {data?.gender}</span>
+                                            </div>
+                                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                                <span className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Match</span>
+                                                <div className="flex items-end gap-1">
+                                                    <span className="font-black text-base md:text-2xl text-white">96.8</span>
+                                                    <span className="text-[8px] md:text-[10px] text-indigo-500 font-black mb-1 md:mb-1.5">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {data?.message && (
+                                        <div className="hidden md:block max-w-[280px] lg:max-w-sm glass-dark p-4 md:p-6 rounded-xl md:rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-xs md:text-sm pointer-events-auto hover:text-white transition-colors">
+                                            <div className="flex items-center gap-2 mb-2 opacity-30">
+                                                <div className="w-8 md:w-10 h-[1px] bg-slate-400" />
+                                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
+                                            </div>
+                                            "{data.message}"
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </section>
 
                 {/* Secondary Intelligence Panel */}
                 <section className="col-span-1 lg:col-span-4 flex flex-col gap-4 md:gap-6">
                     {/* Visitor Matrix */}
-                    <div className="glass-dark p-6 md:p-8 rounded-3xl border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
+                    <div className="glass-dark p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
                         <div>
-                            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
-                            <h3 className="text-5xl md:text-6xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
+                            <p className="text-slate-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] mb-1 md:mb-2">Visitor Matrix</p>
+                            <h3 className="text-4xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
                         </div>
-                        <div className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
-                            <Users className="w-6 h-6 md:w-8 md:h-8" />
+                        <div className="p-3 md:p-5 rounded-2xl md:rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
+                            <Users className="w-5 h-5 md:w-8 md:h-8" />
                         </div>
                     </div>
 
                     {/* Spectral Distribution */}
-                    <div className="glass-dark p-6 md:p-8 rounded-3xl border border-white/5 flex flex-col gap-6 md:gap-8 flex-grow shadow-2xl">
+                    <div className="glass-dark p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-white/5 flex flex-col gap-5 md:gap-8 flex-grow shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-1">
-                                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
-                                <div className="h-px w-20 bg-indigo-500/30" />
+                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                <p className="text-slate-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
+                                <div className="h-px w-12 md:w-20 bg-indigo-500/30" />
                             </div>
-                            <Activity className="w-4 h-4 text-slate-700" />
+                            <Activity className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-700" />
                         </div>
 
-                        <div className="flex flex-col gap-5 md:gap-6">
-                            {data && data.emotion_stats && Object.entries(data.emotion_stats).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([emotion, count]) => {
+                        <div className="flex flex-col gap-6">
+                            {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
                                 const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
                                 return (
                                     <div key={emotion} className="group flex flex-col gap-2.5">
                                         <div className="flex justify-between items-end">
-                                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors uppercase">{emotion}</span>
-                                            <span className="text-[9px] md:text-[10px] font-mono font-bold text-slate-600">{count as number} UNIT</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
+                                            <span className="text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
                                         </div>
                                         <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
                                             <div
                                                 className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
                                                 style={{
-                                                    width: `${((count as number) / (Math.max(...Object.values(data.emotion_stats).map(v => v as number)) + 0.1)) * 100}%`,
+                                                    width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
                                                     backgroundColor: color,
                                                     boxShadow: `0 0 20px 2px ${color}33`
                                                 }}
@@ -485,12 +482,12 @@ export default function DashboardContent() {
                     </div>
 
                     {/* Metadata Footer */}
-                    <div className="glass-dark p-4 rounded-xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
+                    <div className="glass-dark p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
                         <div className="flex items-center gap-3">
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]" />
                             <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">System Operational</span>
                         </div>
-                        <span className="text-[8px] font-mono text-slate-600 uppercase">STABLE_v6.4.1</span>
+                        <span className="text-[8px] font-mono text-slate-600">STABLE_v6.4.1</span>
                     </div>
                 </section>
             </div>
@@ -498,7 +495,7 @@ export default function DashboardContent() {
             {error && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] glass-dark px-8 py-4 rounded-2xl border border-red-500/40 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 shadow-2xl">
                     <AlertCircle className="w-5 h-5 text-red-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500">{error}</span>
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-red-500">{error}</span>
                 </div>
             )}
         </main>
