@@ -115,7 +115,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 8 : 12; // Increased for "Super Fast" feel
+        const FPS_THROTTLE = isMobile ? 12 : 24; // Pushed to "Ultra Smooth" (24 FPS)
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -138,7 +138,7 @@ export default function DashboardContent() {
                             canvas.height = 180;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.3); // Compressed for faster transmission
+                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.25); // Faster processing quality
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -335,7 +335,7 @@ export default function DashboardContent() {
                                 {/* AI Processed Overlay */}
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-75 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
                                     style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                                     alt="AI Stream"
                                     key={streamKey}
