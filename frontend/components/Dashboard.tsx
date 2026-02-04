@@ -130,11 +130,11 @@ export default function DashboardContent() {
         }
     }, [isRunning, isLocalHost, isMobile]);
 
-    // Ultra-Optimized Frame Capture Loop (Per User Guide)
+    // Smooth Live Video Detection with Optimized FPS
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 12 : 20; // Super smooth 20 FPS target for analysis
+        const FPS_THROTTLE = isMobile ? 15 : 24; // Increased to 24 FPS for desktop, 15 for mobile
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -152,13 +152,13 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Optimized resolution (480x270) for high-accuracy mobile detection
-                            canvas.width = 480;
-                            canvas.height = 270;
+                            // Balanced resolution for smooth detection
+                            canvas.width = 640;
+                            canvas.height = 360;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            // Quality increased to 0.6 for better detail
-                            const imageData = canvas.toDataURL("image/jpeg", 0.6);
+                            // Slightly lower quality (0.5) for faster processing
+                            const imageData = canvas.toDataURL("image/jpeg", 0.5);
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -174,7 +174,7 @@ export default function DashboardContent() {
                                     const result = await res.json();
                                     setProcessedImage(result.image);
 
-                                    // NEW: Sync local data state with analyzed result for instant UI update
+                                    // Instant UI sync for live feedback
                                     if (result.data) {
                                         setData(prev => ({
                                             ...prev!,
@@ -188,7 +188,7 @@ export default function DashboardContent() {
                                     }
                                 }
                             } catch (err) {
-                                console.error("Cloud Analytics error:", err);
+                                console.error("Analysis error:", err);
                             } finally {
                                 isAnalyzingRef.current = false;
                             }
@@ -206,7 +206,7 @@ export default function DashboardContent() {
         return () => {
             if (frameId) cancelAnimationFrame(frameId);
         };
-    }, [isRunning, isLocalHost, isMobile]);
+    }, [isRunning, isLocalHost, isMobile, sessionId]);
 
     // Polling logic for global stats
     useEffect(() => {
@@ -413,7 +413,7 @@ export default function DashboardContent() {
 
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* Video Layer Container */}
+                        {/* Video Layer Container - Smooth Transitions */}
                         <div className="absolute inset-0">
                             {isRunning && !isLocalHost && (
                                 <video
@@ -421,14 +421,14 @@ export default function DashboardContent() {
                                     autoPlay
                                     playsInline
                                     muted
-                                    className={`w-full h-full object-cover transition-all duration-1000 ${processedImage ? 'opacity-40 scale-105' : 'opacity-100 scale-100'}`}
+                                    className={`w-full h-full object-cover transition-all duration-300 ${processedImage ? 'opacity-30 scale-105' : 'opacity-100 scale-100'}`}
                                     style={{ transform: 'scaleX(-1)' }}
                                 />
                             )}
                             {isRunning && (
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
+                                    className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-200 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
                                     style={{ transform: 'scaleX(-1)' }}
                                     alt="Vision Feed"
                                     key={streamKey}
