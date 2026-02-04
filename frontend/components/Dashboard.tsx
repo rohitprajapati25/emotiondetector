@@ -445,24 +445,15 @@
 // }
 
 
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { API_BASE_URL } from "../lib/config";
 import {
-    Activity,
-    Users,
-    Camera,
-    RefreshCw,
-    AlertCircle,
-    Play,
-    Pause,
-    Power,
-    BrainCircuit
+    Activity, Users, Camera, RefreshCw, AlertCircle, Play, Pause, Power, BrainCircuit, Scan Eye
 } from "lucide-react";
 
-// Types & Mapping
+// Types
 interface EmotionStats { [key: string]: number; }
 interface BackendData {
     is_running: boolean;
@@ -476,13 +467,8 @@ interface BackendData {
 }
 
 const EMOTION_THEME_MAP = {
-    'Happy': 'var(--happy)',
-    'Sad': 'var(--sad)',
-    'Angry': 'var(--angry)',
-    'Neutral': 'var(--amber)',
-    'Surprise': 'var(--pink)',
-    'Fear': 'var(--purple)',
-    'Disgust': 'var(--teal)'
+    'Happy': 'var(--happy)', 'Sad': 'var(--sad)', 'Angry': 'var(--angry)',
+    'Neutral': 'var(--amber)', 'Surprise': 'var(--pink)', 'Fear': 'var(--purple)', 'Disgust': 'var(--teal)'
 };
 
 export default function DashboardContent() {
@@ -490,7 +476,6 @@ export default function DashboardContent() {
     const [data, setData] = useState<BackendData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
-    const [streamKey, setStreamKey] = useState(0);
     const [processedImage, setProcessedImage] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -498,7 +483,6 @@ export default function DashboardContent() {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
-    // 1. Initial Setup
     useEffect(() => {
         setMounted(true);
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -507,47 +491,36 @@ export default function DashboardContent() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // 2. Camera Administration
     useEffect(() => {
-        if (isRunning && typeof navigator !== "undefined") {
+        if (isRunning) {
             const startCamera = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: 'user',
-                            width: isMobile ? 640 : 1280,
-                            height: isMobile ? 480 : 720
-                        }
+                        video: { facingMode: 'user', width: 640, height: 480 }
                     });
                     if (videoRef.current) videoRef.current.srcObject = stream;
-                } catch (err) {
-                    setError("Camera Access Denied");
-                }
+                } catch (err) { setError("Camera Access Denied"); }
             };
             startCamera();
         } else if (videoRef.current?.srcObject) {
             (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
             videoRef.current.srcObject = null;
         }
-    }, [isRunning, isMobile]);
+    }, [isRunning]);
 
-    // 3. High-Speed Frame Processing Loop
     useEffect(() => {
         let frameId: number;
         const processFrame = async () => {
             if (!isRunning) return;
-
             if (videoRef.current && canvasRef.current && !isAnalyzingRef.current) {
                 const video = videoRef.current;
                 const canvas = canvasRef.current;
-
                 if (video.readyState >= 2) {
                     const ctx = canvas.getContext("2d");
                     if (ctx) {
                         isAnalyzingRef.current = true;
                         ctx.drawImage(video, 0, 0, 320, 180);
                         const imageData = canvas.toDataURL("image/jpeg", 0.3);
-
                         try {
                             const res = await fetch(`${API_BASE_URL}/analyze`, {
                                 method: 'POST',
@@ -557,170 +530,105 @@ export default function DashboardContent() {
                             if (res.ok) {
                                 const result = await res.json();
                                 setProcessedImage(result.image);
-                                // Update stats if returned in the same call
-                                if (result.stats) setData(result.stats);
                             }
-                        } catch (err) {
-                            console.error("Frame skip:", err);
-                        } finally {
-                            isAnalyzingRef.current = false;
-                        }
+                        } catch (err) { console.error(err); }
+                        finally { isAnalyzingRef.current = false; }
                     }
                 }
             }
             frameId = requestAnimationFrame(processFrame);
         };
-
         if (isRunning) frameId = requestAnimationFrame(processFrame);
         return () => cancelAnimationFrame(frameId);
     }, [isRunning]);
 
-    // 4. Global Stats Polling (Syncs the "Brain" state)
-    useEffect(() => {
-        const fetchStatus = async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/status`);
-                const json = await res.json();
-                setData(json);
-                setError(null);
-            } catch (err) {
-                setError("Cloud Brain: Connecting...");
-            }
-        };
-        const interval = setInterval(fetchStatus, 3000);
-        return () => clearInterval(interval);
-    }, []);
-
     if (!mounted) return null;
-
     const accentColor = EMOTION_THEME_MAP[data?.emotion as keyof typeof EMOTION_THEME_MAP] || 'var(--amber)';
 
     return (
-        <main className="min-h-screen p-4 md:p-8 bg-grid relative flex flex-col gap-6" style={{ '--accent': accentColor } as any}>
+        <main className="min-h-screen p-4 md:p-8 bg-grid text-white" style={{ '--accent': accentColor } as any}>
 
-            {/* Dynamic Ambient Glow */}
-            <div className="fixed inset-0 pointer-events-none transition-all duration-1000 z-0"
-                style={{ boxShadow: isRunning ? `inset 0 0 150px color-mix(in srgb, ${accentColor} 20%, transparent)` : '' }} />
-
-            {/* Header */}
-            <header className="glass p-4 md:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-4 z-10 border-t border-white/10">
+            {/* Header Section */}
+            <header className="glass p-6 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 mb-8 border border-white/10 shadow-2xl">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                        <BrainCircuit className="w-8 h-8" style={{ color: accentColor }} />
+                    <div className="p-3 rounded-2xl bg-white/5 animate-pulse">
+                        <BrainCircuit className="w-8 h-8 text-[var(--accent)]" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black tracking-tighter text-white">CORE_AI DASHBOARD</h1>
-                        <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em]">NEURAL NET STATUS: {isRunning ? 'ACTIVE' : 'IDLE'}</p>
+                        <h1 className="text-3xl font-black tracking-tighter italic">NEURAL_EYE v2</h1>
+                        <p className="text-[10px] text-slate-500 font-bold tracking-[0.4em]">STATUS: {isRunning ? 'RUNNING' : 'STANDBY'}</p>
                     </div>
                 </div>
-
-                <div className="flex gap-3">
-                    <button onClick={() => setStreamKey(Date.now())} className="glass px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors">
-                        <RefreshCw className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setIsRunning(!isRunning)}
-                        className={`flex items-center gap-3 px-8 py-3 rounded-xl font-black uppercase tracking-widest transition-all ${isRunning ? 'bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]'
-                            } text-white`}
-                    >
-                        {isRunning ? <Pause className="fill-current" /> : <Play className="fill-current" />}
-                        {isRunning ? 'Stop System' : 'Initialize Brain'}
-                    </button>
-                </div>
+                <button
+                    onClick={() => setIsRunning(!isRunning)}
+                    className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center gap-3 ${isRunning ? 'bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 text-black shadow-lg shadow-green-500/20'
+                        }`}
+                >
+                    {isRunning ? <Pause /> : <Play />} {isRunning ? 'Shutdown' : 'Start AI'}
+                </button>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 z-10 flex-grow">
-                {/* Main Viewfinder */}
-                <section className="lg:col-span-8 flex flex-col gap-6">
-                    <div className="relative glass rounded-[2rem] overflow-hidden border-2 border-white/5 aspect-video bg-slate-950 shadow-2xl">
-                        <canvas ref={canvasRef} className="hidden" width={320} height={180} />
-
-                        {/* Scanning Effect Overlay */}
-                        {isRunning && <div className="absolute inset-0 pointer-events-none z-30 opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />}
-
-                        <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] transition-opacity duration-500 ${processedImage ? 'opacity-40' : 'opacity-100'}`} />
-
-                        {processedImage && (
-                            <img src={processedImage} alt="AI Overlay" className="absolute inset-0 w-full h-full object-cover scale-x-[-1] z-20" />
-                        )}
-
-                        {!isRunning && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md">
-                                <Power className="w-16 h-16 text-slate-700 animate-pulse" />
-                                <span className="mt-4 text-slate-500 font-black tracking-widest uppercase">System Standby</span>
-                            </div>
-                        )}
-
-                        {/* HUD Overlay Labels */}
-                        <div className="absolute top-6 left-6 z-40 flex gap-4">
-                            <div className="glass-accent px-4 py-2 rounded-lg border-l-4 border-green-500">
-                                <span className="text-[10px] font-black block text-slate-400">LATENCY</span>
-                                <span className="text-xs font-mono text-green-400">14ms</span>
-                            </div>
-                        </div>
+            {/* Dual Video Feed Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* 1. RAW CAMERA FEED */}
+                <div className="relative glass rounded-[2.5rem] overflow-hidden border border-white/10 aspect-video bg-black group">
+                    <div className="absolute top-4 left-4 z-20 glass-accent px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-2">
+                        <Camera className="w-3 h-3 text-blue-400" /> RAW_INPUT_SOURCE
                     </div>
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] opacity-70 group-hover:opacity-100 transition-opacity" />
+                    {!isRunning && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm italic text-slate-500 uppercase tracking-widest">Signal Lost</div>}
+                </div>
 
-                    {/* Result Card */}
-                    {isRunning && (
-                        <div className="glass p-8 rounded-[2rem] border-l-[12px] flex justify-between items-center transition-all duration-500" style={{ borderColor: accentColor }}>
-                            <div>
-                                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Inferred Subject</span>
-                                <h2 className="text-7xl font-black text-white" style={{ textShadow: `0 0 20px ${accentColor}44` }}>
-                                    {data?.emotion || "Analyzing..."}
-                                </h2>
-                                <div className="flex gap-8 mt-4 text-xl font-bold">
-                                    <span className="text-slate-400">AGE: <span className="text-white">{data?.age || '--'}</span></span>
-                                    <span className="text-slate-400">GENDER: <span className="text-white">{data?.gender || '--'}</span></span>
-                                </div>
-                            </div>
-                            <div className="max-w-[300px] text-right">
-                                <p className="text-2xl italic font-medium text-slate-300 leading-tight">"{data?.message}"</p>
-                            </div>
+                {/* 2. AI PROCESSED FEED */}
+                <div className="relative glass rounded-[2.5rem] overflow-hidden border-2 border-[var(--accent)] aspect-video bg-black shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                    <div className="absolute top-4 left-4 z-20 bg-[var(--accent)] text-black px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-2">
+                        <Scan className="w-3 h-3" /> AI_NEURAL_OUTPUT
+                    </div>
+                    {processedImage ? (
+                        <img src={processedImage} alt="AI Output" className="w-full h-full object-cover scale-x-[-1]" />
+                    ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                            <RefreshCw className="w-12 h-12 text-slate-700 animate-spin" />
+                            <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Waiting for Data...</span>
                         </div>
                     )}
-                </section>
-
-                {/* Sidebar Stats */}
-                <section className="lg:col-span-4 flex flex-col gap-6">
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group">
-                        <Users className="absolute -right-4 -bottom-4 w-32 h-32 text-white/5 group-hover:text-white/10 transition-all" />
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Engagements</span>
-                        <div className="text-7xl font-black text-white mt-2">{data?.visitors || 0}</div>
-                    </div>
-
-                    <div className=" p-8 rounded-[2rem] flex-grow">
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest block border-b border-white/5 pb-4 mb-6">Emotion Distribution</span>
-                        <div className="space-y-6">
-                            {data && Object.entries(data.emotion_stats).map(([emotion, count]) => (
-                                <div key={emotion} className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className="text-slate-400">{emotion}</span>
-                                        <span className="text-white">{count}</span>
-                                    </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <div
-                                            className="h-full transition-all duration-1000 shadow-[0_0_10px_currentcolor]"
-                                            style={{
-                                                width: `${(count / (Math.max(...Object.values(data.emotion_stats)) || 1)) * 100}%`,
-                                                backgroundColor: EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP],
-                                                color: EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP]
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                    {/* Scanning Line Animation */}
+                    {isRunning && <div className="absolute inset-0 pointer-events-none z-30 scan-line" />}
+                </div>
             </div>
 
-            {/* Error Notification */}
-            {error && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 glass border-red-500/50 px-8 py-4 rounded-full flex items-center gap-4 text-red-400 z-50">
-                    <AlertCircle />
-                    <span className="font-black uppercase tracking-widest text-sm">{error}</span>
+            {/* Bottom Stats & Result Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-8 glass p-8 rounded-[2.5rem] border-t-4 border-[var(--accent)] relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div>
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-[0.3em]">Detection Result</span>
+                            <h2 className="text-8xl font-black italic tracking-tighter mt-2" style={{ color: accentColor }}>
+                                {data?.emotion || "---"}
+                            </h2>
+                            <div className="flex gap-10 mt-6">
+                                <div className="flex flex-col"><span className="text-slate-500 text-[10px] font-bold uppercase">Subject_Age</span><span className="text-3xl font-black">{data?.age || '00'}</span></div>
+                                <div className="flex flex-col"><span className="text-slate-500 text-[10px] font-bold uppercase">Subject_Gender</span><span className="text-3xl font-black">{data?.gender || 'N/A'}</span></div>
+                            </div>
+                        </div>
+                        <div className="glass-accent p-6 rounded-3xl max-w-sm border-l-4 border-white/20">
+                            <p className="text-xl italic font-semibold text-slate-300">"{data?.message || 'The system is ready for neural analysis.'}"</p>
+                        </div>
+                    </div>
                 </div>
-            )}
+
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                    <div className="glass p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-[var(--accent)] transition-all">
+                        <div>
+                            <span className="text-xs font-black text-slate-500 uppercase">Total Visitors</span>
+                            <div className="text-6xl font-black mt-1 group-hover:scale-110 transition-transform">{data?.visitors || 0}</div>
+                        </div>
+                        <Users className="w-12 h-12 text-slate-700" />
+                    </div>
+                </div>
+            </div>
+
+            <canvas ref={canvasRef} className="hidden" width={320} height={180} />
         </main>
     );
 }
