@@ -325,7 +325,7 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 scale-x-[-1] ${processedImage ? 'opacity-30' : 'opacity-100'}`}
                             />
                         )}
 
