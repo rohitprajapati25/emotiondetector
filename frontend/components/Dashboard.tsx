@@ -452,7 +452,7 @@ import { useEffect, useState, useRef } from "react";
 import { API_BASE_URL } from "../lib/config";
 import {
     Activity, Users, Camera, RefreshCw, AlertCircle,
-    Play, Pause, BrainCircuit, Scan, Fingerprint, BarChart3
+    Play, Pause, BrainCircuit, Scan, Fingerprint
 } from "lucide-react";
 
 // --- Types ---
@@ -468,7 +468,7 @@ interface BackendData {
     emotion_stats: EmotionStats;
 }
 
-const EMOTION_THEME_MAP = {
+const EMOTION_THEME_MAP: Record<string, string> = {
     'Happy': 'var(--happy)', 'Sad': 'var(--sad)', 'Angry': 'var(--angry)',
     'Neutral': 'var(--amber)', 'Surprise': 'var(--pink)', 'Fear': 'var(--purple)', 'Disgust': 'var(--teal)'
 };
@@ -479,19 +479,12 @@ export default function DashboardContent() {
     const [error, setError] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [processedImage, setProcessedImage] = useState<string | null>(null);
-    const [isMobile, setIsMobile] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
-    useEffect(() => {
-        setMounted(true);
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
     // 1. Camera Control
     useEffect(() => {
@@ -499,7 +492,7 @@ export default function DashboardContent() {
             const startCamera = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+                        video: { facingMode: 'user', width: 640, height: 480 }
                     });
                     if (videoRef.current) videoRef.current.srcObject = stream;
                 } catch (err) { setError("Camera Access Denied"); }
@@ -548,119 +541,114 @@ export default function DashboardContent() {
     }, [isRunning]);
 
     if (!mounted) return null;
-    const accentColor = EMOTION_THEME_MAP[data?.emotion as keyof typeof EMOTION_THEME_MAP] || 'var(--amber)';
+    const accentColor = EMOTION_THEME_MAP[data?.emotion || 'Neutral'] || 'var(--amber)';
 
     return (
-        <main className="min-h-screen p-4 md:p-6 lg:p-8 bg-grid text-white flex flex-col gap-4 md:gap-6 overflow-x-hidden" style={{ '--accent': accentColor } as any}>
+        <main className="min-h-screen p-4 md:p-8 bg-grid text-white flex flex-col gap-6 overflow-x-hidden" style={{ '--accent': accentColor } as any}>
 
-            {/* Header - Fully Responsive Stack */}
-            <header className="glass p-4 md:p-5 rounded-2xl md:rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 z-10 border border-white/10 shadow-2xl">
-                <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
-                    <div className="p-2 md:p-3 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                        <BrainCircuit className="w-6 h-6 md:w-8 md:h-8" style={{ color: accentColor }} />
+            {/* Header */}
+            <header className="glass p-5 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 z-10 border border-white/10 shadow-2xl">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <BrainCircuit className="w-8 h-8" style={{ color: accentColor }} />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black tracking-tighter italic">CORE_BRAIN v5.2</h1>
-                        <p className="text-[8px] md:text-[10px] text-slate-500 font-bold tracking-[0.4em]">STATUS: {isRunning ? 'RUNNING' : 'STANDBY'}</p>
+                        <h1 className="text-2xl font-black tracking-tighter italic uppercase">Neural_Eye v5</h1>
+                        <p className="text-[10px] text-slate-500 font-bold tracking-[0.4em]">BRAIN_STATUS: {isRunning ? 'ACTIVE' : 'STANDBY'}</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setIsRunning(!isRunning)}
-                    className={`w-full md:w-auto px-6 md:px-10 py-3 rounded-xl md:rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/50' : 'bg-green-500 text-black shadow-lg shadow-green-500/20'
+                    className={`w-full md:w-auto px-10 py-3 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/50' : 'bg-green-500 text-black shadow-lg shadow-green-500/20'
                         }`}
                 >
-                    {isRunning ? <Pause size={18} /> : <Play size={18} />} {isRunning ? 'Shutdown' : 'Start AI'}
+                    {isRunning ? <Pause /> : <Play />} {isRunning ? 'Stop System' : 'Initialize'}
                 </button>
             </header>
 
-            {/* Split Feed Layout - Stack on Mobile, Side-by-Side on Desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 flex-grow">
-
-                {/* Left: SOURCE_CAM_01 */}
-                <div className="relative glass rounded-[1.5rem] md:rounded-[2rem] overflow-hidden border border-white/5 aspect-video bg-[#05070a] group">
-                    <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20 glass-accent px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black flex items-center gap-2 border border-white/10">
-                        <Camera size={10} className="text-blue-400" /> SOURCE_CAM_01
+            {/* Split Video Feed Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Feed */}
+                <div className="relative glass rounded-[2rem] overflow-hidden aspect-video bg-[#05070a] border border-white/5">
+                    <div className="absolute top-4 left-4 z-20 glass-accent px-3 py-1 rounded-xl text-[10px] font-black flex items-center gap-2">
+                        <Camera size={12} className="text-blue-400" /> SOURCE_INPUT
                     </div>
-
                     {isRunning ? (
-                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] opacity-70 group-hover:opacity-100 transition-opacity duration-700" />
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1] opacity-60" />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-4">
-                            <Fingerprint size={40} className="text-slate-800 animate-pulse md:w-12 md:h-12" />
-                            <span className="text-[8px] md:text-[10px] font-bold text-slate-700 tracking-[0.4em] uppercase">Waiting_For_Auth</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                            <Fingerprint size={48} className="text-slate-800 animate-pulse" />
+                            <span className="text-[10px] font-bold text-slate-700 tracking-[0.4em]">WAITING_FOR_SIGNAL</span>
                         </div>
                     )}
                 </div>
 
-                {/* Right: NEURAL_PROCESS_SYNC */}
-                <div className="relative glass rounded-[1.5rem] md:rounded-[2rem] overflow-hidden border-2 aspect-video bg-black shadow-2xl transition-all duration-500"
-                    style={{ borderColor: isRunning ? accentColor : 'rgba(255,255,255,0.05)' }}>
-
-                    <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20 bg-[#f59e0b] text-black px-3 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black flex items-center gap-2 shadow-lg">
-                        <Scan size={10} /> NEURAL_PROCESS_SYNC
+                {/* Right Feed (AI) */}
+                <div className="relative glass rounded-[2rem] overflow-hidden aspect-video bg-black border-2 transition-all duration-500" style={{ borderColor: isRunning ? accentColor : 'transparent' }}>
+                    <div className="absolute top-4 left-4 z-20 bg-[#f59e0b] text-black px-4 py-1 rounded-xl text-[10px] font-black flex items-center gap-2">
+                        <Scan size={12} /> NEURAL_SYNC
                     </div>
-
                     {processedImage ? (
-                        <img src={processedImage} alt="AI Neural Output" className="w-full h-full object-cover scale-x-[-1]" />
+                        <img src={processedImage} alt="AI" className="w-full h-full object-cover scale-x-[-1]" />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-4">
-                            <Activity className="w-10 h-10 md:w-12 md:h-12 text-slate-800 animate-pulse" />
-                            <span className="text-[8px] md:text-[10px] font-bold text-slate-700 tracking-[0.3em]">PROCESSING_NEURAL_LAYERS</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Activity className="w-12 h-12 text-slate-800 animate-pulse" />
                         </div>
                     )}
-
-                    {/* Scanning Line Animation */}
                     {isRunning && <div className="absolute inset-0 pointer-events-none z-30 scan-line" />}
                 </div>
             </div>
 
-            {/* AI Progress Bar & Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+            {/* Analytics Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {/* Result Info Card */}
-                <div className="lg:col-span-8 glass p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border-t-4 transition-all duration-700" style={{ borderColor: accentColor }}>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-6">
-                        <div className="w-full">
-                            <span className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block text-center md:text-left">Inferred Subject</span>
-                            <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-center md:text-left" style={{ color: accentColor }}>
-                                {data?.emotion || "Analyzing..."}
+                {/* Subject Details & Multi-Emotion Bars */}
+                <div className="lg:col-span-8 glass p-6 md:p-8 rounded-[2.5rem] border-t-4" style={{ borderColor: accentColor }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Detection Text */}
+                        <div>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Primary Emotion</span>
+                            <h2 className="text-6xl font-black italic tracking-tighter mb-6" style={{ color: accentColor }}>
+                                {data?.emotion || "Scanning..."}
                             </h2>
-
-                            {/* NEW: Neural Progress Bar */}
-                            <div className="mt-6 space-y-2">
-                                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                                    <span className="text-slate-500 flex items-center gap-2"><BarChart3 size={12} /> Analysis Progress</span>
-                                    <span style={{ color: accentColor }}>{isRunning ? '94%' : '0%'}</span>
-                                </div>
-                                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
-                                    <div
-                                        className="h-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-                                        style={{
-                                            width: isRunning ? '94%' : '0%',
-                                            backgroundColor: accentColor,
-                                            boxShadow: `0 0 20px ${accentColor}44`
-                                        }}
-                                    />
-                                </div>
+                            <div className="flex gap-8">
+                                <div className="flex flex-col"><span className="text-slate-600 text-[10px] font-bold uppercase">Age</span><span className="text-2xl font-black">{data?.age || '--'}</span></div>
+                                <div className="flex flex-col"><span className="text-slate-600 text-[10px] font-bold uppercase">Gender</span><span className="text-2xl font-black uppercase">{data?.gender || '---'}</span></div>
                             </div>
+                        </div>
 
-                            <div className="flex justify-center md:justify-start gap-8 md:gap-10 mt-6 pt-6 border-t border-white/5">
-                                <div className="flex flex-col"><span className="text-slate-600 text-[8px] md:text-[10px] font-bold uppercase">Age</span><span className="text-2xl md:text-3xl font-black">{data?.age || '--'}</span></div>
-                                <div className="flex flex-col"><span className="text-slate-600 text-[8px] md:text-[10px] font-bold uppercase">Gender</span><span className="text-2xl md:text-3xl font-black uppercase">{data?.gender || '---'}</span></div>
-                            </div>
+                        {/* Multi-Progress Bars */}
+                        <div className="flex flex-col gap-4 bg-black/20 p-5 rounded-3xl border border-white/5">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Neural Distribution</p>
+                            {data && Object.entries(data.emotion_stats).map(([emotion, count]) => (
+                                <div key={emotion} className="space-y-1">
+                                    <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter">
+                                        <span className="text-slate-400">{emotion}</span>
+                                        <span style={{ color: EMOTION_THEME_MAP[emotion] || 'white' }}>{count}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full transition-all duration-1000"
+                                            style={{
+                                                width: `${count}%`,
+                                                backgroundColor: EMOTION_THEME_MAP[emotion] || 'var(--amber)',
+                                                boxShadow: `0 0 10px ${EMOTION_THEME_MAP[emotion]}66`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Visitor Counter Card */}
-                <div className="lg:col-span-4 flex flex-col gap-4 md:gap-6">
-                    <div className="glass p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between group hover:border-[var(--accent)] transition-all flex-grow">
-                        <div>
-                            <span className="text-[10px] md:text-xs font-black text-slate-500 uppercase">Total Visitors</span>
-                            <div className="text-5xl md:text-6xl font-black mt-1 group-hover:scale-105 transition-transform">{data?.visitors || 0}</div>
-                        </div>
-                        <Users className="w-10 h-10 md:w-12 md:h-12 text-slate-700" />
+                {/* Visitor Stats */}
+                <div className="lg:col-span-4 glass p-8 rounded-[2.5rem] flex items-center justify-between group">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase">Total Visitors</p>
+                        <div className="text-7xl font-black mt-2">{data?.visitors || 0}</div>
                     </div>
+                    <Users className="w-12 h-12 text-slate-800" />
                 </div>
             </div>
 
