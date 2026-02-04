@@ -84,10 +84,10 @@ export default function DashboardContent() {
                     // Mobile-Optimized Constraints
                     const constraints = {
                         video: {
-                            facingMode: 'user', // Better for front camera
-                            width: isMobile ? { ideal: 480 } : { ideal: 640 },
-                            height: isMobile ? { ideal: 360 } : { ideal: 360 },
-                            frameRate: { max: 15 } // Reduce sensor load
+                            facingMode: 'user',
+                            width: isMobile ? { ideal: 640 } : { ideal: 1280 },
+                            height: isMobile ? { ideal: 480 } : { ideal: 720 },
+                            frameRate: { ideal: 24, max: 30 }
                         }
                     };
 
@@ -325,8 +325,8 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
-                                style={{ transform: 'scaleX(-1)' }} // Mirror mode for intuitive movement
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                style={{ transform: 'scaleX(-1)' }} // Sharp Mirror Mode
                             />
                         )}
 
@@ -335,8 +335,8 @@ export default function DashboardContent() {
                                 {/* AI Processed Overlay */}
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`w-full h-full object-contain relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
-                                    style={{ transform: 'scaleX(-1)' }} // Mirror mode for intuitive movement
+                                    className={`w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ transform: 'scaleX(-1)' }} // Sharp Mirror Mode
                                     alt="AI Stream"
                                     key={streamKey}
                                 />
