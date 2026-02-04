@@ -57,16 +57,20 @@ export default function DashboardContent() {
     const [isRunning, setIsRunning] = useState(false);
     const [streamKey, setStreamKey] = useState(0);
     const [processedImage, setProcessedImage] = useState<string | null>(null);
+    const [isLocalHost, setIsLocalHost] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
         setMounted(true);
+        if (typeof window !== "undefined") {
+            setIsLocalHost(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+        }
     }, []);
 
-    // 1. Browser Camera Administration
+    // 1. Browser Camera Administration (Only if not LocalHost)
     useEffect(() => {
-        if (isRunning && typeof navigator !== "undefined") {
+        if (!isLocalHost && isRunning && typeof navigator !== "undefined") {
             const startCamera = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
@@ -91,10 +95,10 @@ export default function DashboardContent() {
         }
     }, [isRunning]);
 
-    // Optimized Frame Capture Loop (Faster upload)
+    // Optimized Frame Capture Loop (Only if not LocalHost)
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isRunning) {
+        if (!isLocalHost && isRunning) {
             interval = setInterval(async () => {
                 if (!videoRef.current || !canvasRef.current) return;
 
@@ -293,26 +297,30 @@ export default function DashboardContent() {
 
                         {/* Camera Preview */}
                         <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
-                            {/* Hidden but rendering Video & Canvas for processing */}
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', pointerEvents: 'none' }}
-                            />
-                            <canvas
-                                ref={canvasRef}
-                                width={640}
-                                height={360}
-                                style={{ display: 'none' }}
-                            />
+                            {/* Hidden but rendering Video & Canvas for processing (Live Cloud only) */}
+                            {!isLocalHost && (
+                                <>
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', pointerEvents: 'none' }}
+                                    />
+                                    <canvas
+                                        ref={canvasRef}
+                                        width={640}
+                                        height={360}
+                                        style={{ display: 'none' }}
+                                    />
+                                </>
+                            )}
 
                             {isRunning ? (
                                 <>
-                                    {/* Main Processed AI Feed from Browser-Side Loop */}
+                                    {/* Main Feed: Switch between Browser Capture (Cloud) and Direct MJPEG (Local) */}
                                     <img
-                                        src={processedImage || `${API_BASE_URL}/video_feed?sk=${streamKey}`}
+                                        src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || `${API_BASE_URL}/video_feed?sk=${streamKey}`)}
                                         className="w-full h-full object-contain"
                                         alt="AI Processed Stream"
                                         key={streamKey}
