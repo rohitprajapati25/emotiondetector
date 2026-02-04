@@ -177,6 +177,7 @@ class DetectionState:
         self.is_running = False
         self.camera_url = ""
         self.emotion = "Neutral"
+        self.confidence = 0.0
         self.age = "N/A"
         self.gender = "N/A"
         self.visitors = 0
@@ -276,9 +277,14 @@ def process_frame_logic(frame, running_ai=True):
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    # Simplified: Only emotion, and mirrored for readability
                     draw_text_mirrored(frame, final_emo, (x, y), 
                                      cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                    
+                    with state.lock:
+                        state.emotion = final_emo
+                        state.confidence = result_data["confidence"]
+                        state.heatmap = result_data["heatmap"]
+                        state.message = result_data["message"]
     else:
         result_data["message"] = "Please step into the Zone"
 
@@ -420,6 +426,7 @@ def get_status():
             "is_running": state.is_running,
             "camera_url": state.camera_url,
             "emotion": state.emotion,
+            "confidence": state.confidence,
             "age": state.age,
             "gender": state.gender,
             "visitors": state.visitors,

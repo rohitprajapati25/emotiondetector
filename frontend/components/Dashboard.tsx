@@ -150,8 +150,20 @@ export default function DashboardContent() {
                                 if (res.ok) {
                                     const result = await res.json();
                                     setProcessedImage(result.image);
-                                    // Set data more frequently from analyze response for immediate feel
-                                    if (result.data) setData(result.data);
+
+                                    // SAFELY merge analysis results without wiping out stats
+                                    if (result.data) {
+                                        setData(prev => {
+                                            if (!prev) return prev; // Wait for initial status poll
+                                            return {
+                                                ...prev,
+                                                emotion: result.data.emotion || prev.emotion,
+                                                confidence: result.data.confidence !== undefined ? result.data.confidence : (prev as any).confidence,
+                                                message: result.data.message || prev.message,
+                                                heatmap: result.data.heatmap || prev.heatmap
+                                            };
+                                        });
+                                    }
                                 }
                             } catch (err) {
                                 console.error("Cloud Analytics error:", err);
@@ -448,19 +460,19 @@ export default function DashboardContent() {
                         </div>
 
                         <div className="flex flex-col gap-5 md:gap-6">
-                            {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
+                            {data && data.emotion_stats && Object.entries(data.emotion_stats).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([emotion, count]) => {
                                 const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
                                 return (
                                     <div key={emotion} className="group flex flex-col gap-2.5">
                                         <div className="flex justify-between items-end">
                                             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors uppercase">{emotion}</span>
-                                            <span className="text-[9px] md:text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
+                                            <span className="text-[9px] md:text-[10px] font-mono font-bold text-slate-600">{count as number} UNIT</span>
                                         </div>
                                         <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
                                             <div
                                                 className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
                                                 style={{
-                                                    width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
+                                                    width: `${((count as number) / (Math.max(...Object.values(data.emotion_stats).map(v => v as number)) + 0.1)) * 100}%`,
                                                     backgroundColor: color,
                                                     boxShadow: `0 0 20px 2px ${color}33`
                                                 }}
