@@ -163,7 +163,10 @@ export default function DashboardContent() {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ image: imageData })
+                                    body: JSON.stringify({
+                                        image: imageData,
+                                        session_id: sessionId
+                                    })
                                 });
 
                                 if (res.ok) {

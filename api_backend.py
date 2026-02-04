@@ -146,6 +146,7 @@ class DetectionState:
         self.known_sessions = self._load_known_sessions()
         self.total_visitors = len(self.known_sessions)
         self.active_sessions = {} # {session_id: last_seen_timestamp}
+        self.session_emotions = defaultdict(set) # {session_id: {emotion1, emotion2}}
         self.lock = threading.Lock()
 
     def _load_known_sessions(self):
@@ -308,7 +309,8 @@ def camera_worker():
                      state.message = res_data["message"]
                      state.age = res_data["age"]
                      state.gender = res_data["gender"]
-                     state.emotion_stats[res_data["emotion"]] += 1
+                     # Global real-time stats (Incrementally)
+                     # state.emotion_stats[res_data["emotion"]] += 1 
             
             _, buf = cv2.imencode('.jpg', processed_frame)
             with state.lock: state.current_frame = buf.tobytes()
@@ -339,6 +341,16 @@ async def analyze(request: Request):
         _, buffer = cv2.imencode('.jpg', processed_frame)
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
+        # Track emotion unique to this session
+        session_id = data.get("session_id")
+        if session_id and len(session_id) > 5 and res_data.get("emotion"):
+            emo = res_data["emotion"]
+            if emo not in state.session_emotions[session_id]:
+                with state.lock:
+                    state.session_emotions[session_id].add(emo)
+                    state.emotion_stats[emo] += 1
+                    print(f"[SYS] Unique Emotion Tracked: {session_id} -> {emo}")
+
         return {
             "status": "ok",
             "image": f"data:image/jpeg;base64,{processed_base64}",
@@ -361,7 +373,7 @@ def get_status(session_id: str = None):
     now = time.time()
     with state.lock:
         # Track Active Sessions
-        if session_id:
+        if session_id and len(session_id) > 5 and session_id not in ["undefined", "null", "NaN"]:
             if session_id not in state.known_sessions:
                 # NEW Unique Visitor detected
                 state.known_sessions.add(session_id)
