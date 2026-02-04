@@ -14,8 +14,8 @@ const getBaseUrl = () => {
         console.log("🌐 Production Mode Detected: Using Cloudflare Tunnel");
     }
 
-    // 4. Default Fallback: Cloudflare Tunnel for Vercel/Production
-    return "https://gary-epinions-fifteen-understood.trycloudflare.com";
+    // 4. Default Fallback: Render.com for Vercel/Production
+    return "https://emotiondetector-2.onrender.com";
 };
 
 export const API_BASE_URL = getBaseUrl();
