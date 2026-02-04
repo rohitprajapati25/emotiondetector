@@ -688,7 +688,7 @@ export default function DashboardContent() {
                         <div className="text-7xl font-black text-white mt-2">{data?.visitors || 0}</div>
                     </div>
 
-                    <div className="glass p-8 rounded-[2rem] flex-grow">
+                    <div className=" p-8 rounded-[2rem] flex-grow">
                         <span className="text-xs font-black text-slate-500 uppercase tracking-widest block border-b border-white/5 pb-4 mb-6">Emotion Distribution</span>
                         <div className="space-y-6">
                             {data && Object.entries(data.emotion_stats).map(([emotion, count]) => (
