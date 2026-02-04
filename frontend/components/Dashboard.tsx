@@ -98,8 +98,12 @@ export default function DashboardContent() {
             interval = setInterval(async () => {
                 if (!videoRef.current || !canvasRef.current) return;
 
-                const canvas = canvasRef.current;
                 const video = videoRef.current;
+                const canvas = canvasRef.current;
+
+                // Ensure video is actually providing data
+                if (video.readyState < 2) return;
+
                 const ctx = canvas.getContext("2d");
                 if (!ctx) return;
 
@@ -305,9 +309,20 @@ export default function DashboardContent() {
 
                         {/* Camera Preview */}
                         <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
-                            {/* Hidden Video & Canvas for processing */}
-                            <video ref={videoRef} autoPlay playsInline muted className="hidden" />
-                            <canvas ref={canvasRef} width={640} height={360} className="hidden" />
+                            {/* Hidden but rendering Video & Canvas for processing */}
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', pointerEvents: 'none' }}
+                            />
+                            <canvas
+                                ref={canvasRef}
+                                width={640}
+                                height={360}
+                                style={{ display: 'none' }}
+                            />
 
                             {isRunning ? (
                                 <>
