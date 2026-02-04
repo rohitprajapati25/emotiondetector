@@ -58,13 +58,21 @@ export default function DashboardContent() {
     const [streamKey, setStreamKey] = useState(0);
     const [processedImage, setProcessedImage] = useState<string | null>(null);
     const [isLocalHost, setIsLocalHost] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const isAnalyzingRef = useRef(false);
 
     useEffect(() => {
         setMounted(true);
         if (typeof window !== "undefined") {
-            setIsLocalHost(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+            const host = window.location.hostname;
+            setIsLocalHost(host === "localhost" || host === "127.0.0.1");
+            setIsMobile(window.innerWidth < 768);
+
+            const handleResize = () => setIsMobile(window.innerWidth < 768);
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
         }
     }, []);
 
@@ -73,9 +81,17 @@ export default function DashboardContent() {
         if (!isLocalHost && isRunning && typeof navigator !== "undefined") {
             const startCamera = async () => {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { width: 640, height: 360 }
-                    });
+                    // Mobile-Optimized Constraints
+                    const constraints = {
+                        video: {
+                            facingMode: 'user', // Better for front camera
+                            width: isMobile ? { ideal: 480 } : { ideal: 640 },
+                            height: isMobile ? { ideal: 360 } : { ideal: 360 },
+                            frameRate: { max: 15 } // Reduce sensor load
+                        }
+                    };
+
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
                     }
@@ -93,14 +109,14 @@ export default function DashboardContent() {
                 videoRef.current.srcObject = null;
             }
         }
-    }, [isRunning]);
+    }, [isRunning, isLocalHost, isMobile]);
 
-    // Optimized Frame Capture Loop (Only if not LocalHost)
+    // Optimized Frame Capture Loop (Faster upload)
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (!isLocalHost && isRunning) {
             interval = setInterval(async () => {
-                if (!videoRef.current || !canvasRef.current) return;
+                if (!videoRef.current || !canvasRef.current || isAnalyzingRef.current) return;
 
                 const video = videoRef.current;
                 const canvas = canvasRef.current;
@@ -110,9 +126,17 @@ export default function DashboardContent() {
                 const ctx = canvas.getContext("2d");
                 if (!ctx) return;
 
-                // 25% Smaller resolution for 50% faster upload
+                // Lock analysis to prevent lag buildup
+                isAnalyzingRef.current = true;
+
+                // Adjust canvas to match actual video feed size
+                if (canvas.width !== video.videoWidth) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                }
+
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL("image/jpeg", 0.4); // Lower quality for speed
+                const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
 
                 try {
                     const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -127,11 +151,13 @@ export default function DashboardContent() {
                     }
                 } catch (err) {
                     console.error("Analysis loop failed:", err);
+                } finally {
+                    isAnalyzingRef.current = false;
                 }
-            }, 180); // Slight delay increase to prevent network congestion
+            }, isMobile ? 250 : 180);
         }
         return () => clearInterval(interval);
-    }, [isRunning]);
+    }, [isRunning, isLocalHost, isMobile]);
 
     // Polling logic for global stats
     useEffect(() => {
@@ -346,28 +372,28 @@ export default function DashboardContent() {
                             )}
                         </div>
 
-                        {/* Floating Results HUD - Optimized for mobile */}
+                        {/* Floating Results HUD - Optimized for mobile (Stacks below video on small screens) */}
                         {isRunning && (
-                            <div className="md:absolute static inset-x-8 bottom-8 flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 md:gap-6 pointer-events-none p-6 md:p-0">
+                            <div className="md:absolute static inset-x-0 md:inset-x-8 bottom-0 md:bottom-8 flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 md:gap-6 pointer-events-none p-4 md:p-0 bg-slate-900/50 md:bg-transparent backdrop-blur-lg md:backdrop-blur-none border-t border-white/5 md:border-none">
                                 <div className="glass p-4 md:p-8 rounded-2xl flex flex-col gap-1 md:gap-2 min-w-0 md:min-w-[340px] border-l-4 md:border-l-8 backdrop-blur-2xl shadow-2xl transition-all duration-1000 pointer-events-auto" style={{ borderColor: accentColor }}>
                                     <span className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] font-black text-slate-500">Active Subject</span>
-                                    <span className="text-4xl md:text-7xl font-black leading-none transition-all duration-1000" style={{ color: accentColor }}>
+                                    <span className="text-3xl md:text-7xl font-black leading-none transition-all duration-1000" style={{ color: accentColor }}>
                                         {currentEmotion}
                                     </span>
                                     <div className="flex gap-4 md:gap-6 mt-2 md:mt-4 pt-2 md:pt-4 border-t border-white/5">
                                         <div className="flex flex-col">
                                             <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Age Group</span>
-                                            <span className="font-bold text-sm md:text-lg">{data?.age}</span>
+                                            <span className="font-bold text-xs md:text-lg">{data?.age}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-slate-600 text-[8px] md:text-[9px] font-black uppercase">Bio Gender</span>
-                                            <span className="font-bold text-sm md:text-lg">{data?.gender}</span>
+                                            <span className="font-bold text-xs md:text-lg">{data?.gender}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="glass p-4 md:p-6 rounded-2xl max-w-full lg:max-w-sm text-center lg:text-right backdrop-blur-2xl border border-white/10 shadow-2xl pointer-events-auto">
-                                    <p className="text-base md:text-xl italic font-semibold leading-relaxed text-slate-200">
+                                <div className="glass p-3 md:p-6 rounded-2xl max-w-full lg:max-w-sm text-center lg:text-right backdrop-blur-2xl border border-white/10 shadow-2xl pointer-events-auto">
+                                    <p className="text-xs md:text-xl italic font-semibold leading-relaxed text-slate-200">
                                         {data?.message}
                                     </p>
                                 </div>
