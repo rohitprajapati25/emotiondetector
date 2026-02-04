@@ -1,0 +1,16 @@
+# Ignore Backend files on Vercel
+api/
+models/
+model/
+haarcascade/
+api_backend.py
+main.py
+debug_mp.py
+Dockerfile
+render.yaml
+tunnel.log
+tunnel_log_v3.txt
+*.bat
+requirements.txt
+setup.bat
+web_starter.bat
