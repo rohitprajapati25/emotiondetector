@@ -53,6 +53,18 @@ export default function DashboardContent() {
     const [mounted, setMounted] = useState(false);
     const [data, setData] = useState<BackendData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isResetting, setIsResetting] = useState(false);
+
+    // Generate/Persistent Session ID for unique visitor tracking
+    const sessionId = useMemo(() => {
+        const key = 'aura_session_id';
+        let id = localStorage.getItem(key);
+        if (!id) {
+            id = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem(key, id);
+        }
+        return id;
+    }, []);
     const [loading, setLoading] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
     const [streamKey, setStreamKey] = useState(0);
@@ -191,7 +203,7 @@ export default function DashboardContent() {
         let isMounted = true;
         const fetchStatus = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/status`);
+                const res = await fetch(`${API_BASE_URL}/status?session_id=${sessionId}`);
                 if (!res.ok) throw new Error("Backend connection failed");
                 const json = await res.json();
 
@@ -311,14 +323,24 @@ export default function DashboardContent() {
                     <button
                         onClick={async () => {
                             try {
+                                setIsResetting(true);
                                 await fetch(`${API_BASE_URL}/reset_camera`, { method: 'POST' });
-                                setTimeout(() => { setStreamKey(Date.now()); setError(null); setIsRunning(true); }, 1500);
-                            } catch (e) { console.error(e); }
+                                setTimeout(() => {
+                                    setStreamKey(Date.now());
+                                    setError(null);
+                                    setIsRunning(true);
+                                    setIsResetting(false);
+                                }, 3000);
+                            } catch (e) {
+                                console.error(e);
+                                setIsResetting(false);
+                            }
                         }}
-                        className="p-3 rounded-xl bg-slate-400/5 hover:bg-slate-400/10 border border-white/5 transition-all active:scale-90 group"
+                        disabled={isResetting}
+                        className={`p-3 rounded-xl bg-slate-400/5 hover:bg-slate-400/10 border border-white/5 transition-all active:scale-90 group ${isResetting ? 'cursor-not-allowed opacity-50' : ''}`}
                         title="Reset Sensor"
                     >
-                        <RefreshCw className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:rotate-180 transition-all duration-500" />
+                        <RefreshCw className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-all duration-500 ${isResetting ? 'animate-spin text-indigo-400' : 'group-hover:rotate-180'}`} />
                     </button>
 
                     <button
@@ -455,7 +477,17 @@ export default function DashboardContent() {
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
                         <div>
                             <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
-                            <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
+                            <div className="flex items-baseline gap-4">
+                                <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter" title="Total unique visitors">
+                                    {(data as any)?.total_visitors || 0}
+                                </h3>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">
+                                        {(data as any)?.active_visitors || 0} Active
+                                    </span>
+                                    <span className="text-[8px] text-slate-600 font-bold uppercase">Live Now</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
                             <Users className="w-8 h-8" />

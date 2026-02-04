@@ -3,7 +3,6 @@ import numpy as np
 from tf_keras.models import load_model
 import threading
 from collections import defaultdict
-from scipy.spatial import distance
 import time
 import base64
 from fastapi import FastAPI, Response, Request
@@ -11,6 +10,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
+import json
 
 # ============================================================================
 # SECTION 0: STABLE NEURAL OVERLAY (Geometric Mapping)
@@ -96,23 +96,7 @@ EMOTION_MESSAGES = {
 
 def refine_emotion_with_ckplus(base_emotion, box, frame):
     """Research-based AU (Action Unit) Refiner for CK+ Standards"""
-    x, y, w, h = box
-    # pt = x + int(w * rx), y + int(h * ry)
-    # Detect AU12 (Lip Corner Puller - Happy)
-    # Detect AU14 (Dimpeler - Contempt / Asymmetry)
-    # Detect AU4 (Brow Lowerer - Angry)
-    
-    # Simple Heuristic: If mouth is asymmetrical, it's often Contempt (CK+ research)
-    m_left = (int(w*0.35), int(h*0.78))
-    m_right = (int(w*0.65), int(h*0.78))
-    
-    # Check for asymmetry (AU14)
-    # Since we use static landmarks, we rely on the CNN but 'Refine' it.
-    if base_emotion == 'Happy':
-        # Check if mouth width is sufficient for AU12
-        return 'Happy'
-    
-    # If the CNN is unsure, CK+ research suggests checking Brows (AU4)
+    # Simple placeholder logic
     return base_emotion
 
 # Fallback Face detector (Haar Cascades)
@@ -147,7 +131,6 @@ class DetectionState:
         self.emotion = "Neutral"
         self.age = "N/A"
         self.gender = "N/A"
-        self.visitors = 0
         self.message = "System Ready"
         self.heatmap = "amber"
         self.emotion_stats = {label: 0 for label in emotion_labels}
@@ -157,22 +140,28 @@ class DetectionState:
             "ai_model": "Active" if emotion_model else "Error",
             "backend": "Running"
         }
-        self.locked_face = None
-        self.analysis_buffer = []
-        self.analysis_complete = False
-        self.final_result = {}
-        self.frame_count = 0
         self.reset_requested = False
+        
+        # Visitor Persistence
+        self.total_visitors = self._load_total_visitors()
+        self.active_sessions = {} # {session_id: last_seen_timestamp}
         self.lock = threading.Lock()
 
-state = DetectionState()
+    def _load_total_visitors(self):
+        try:
+            if os.path.exists("visitors.json"):
+                with open("visitors.json", "r") as f:
+                    return json.load(f).get("total_visitors", 0)
+        except: pass
+        return 0
 
-EMOTION_MESSAGES = {
-    'Happy': "Keep smiling! 😄", 'Sad': "Everything will be okay 🌱",
-    'Angry': "Take a deep breath 💨", 'Surprise': "What a surprise! 😮",
-    'Fear': "Stay calm, you're safe 🛡️", 'Disgust': "Stay positive! ✨",
-    'Neutral': "Have a great day! 👋"
-}
+    def save_visitors(self):
+        try:
+            with open("visitors.json", "w") as f:
+                json.dump({"total_visitors": self.total_visitors}, f)
+        except: pass
+
+state = DetectionState()
 
 # ============================================================================
 # SECTION 3: CORE LOGIC & THREADS
@@ -189,8 +178,6 @@ def detect_age_gender(face_roi):
         return age, gender
     except: return "N/A", "N/A"
 
-# MediaPipe logic is now handled by the Tasks API block at the start of the file.
-
 def process_frame_logic(frame, running_ai=True):
     """Core logic to process a single frame and return data + annotated image"""
     h, w = frame.shape[:2]
@@ -203,7 +190,7 @@ def process_frame_logic(frame, running_ai=True):
         "status": "No Face Detected"
     }
 
-    # Expanded ROI for better mobile usability (now 90% height, 90% width)
+    # Expanded ROI for better mobile usability
     roi_h, roi_w = int(h * 0.90), int(w * 0.90)
     roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
     roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
@@ -211,23 +198,18 @@ def process_frame_logic(frame, running_ai=True):
     cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray) # Improve contrast for detection
-    
-    # Sensitivity tweak: 1.1 scale factor and 3 minNeighbors for better mobile detection
+    gray = cv2.equalizeHist(gray)
     faces = face_cascade.detectMultiScale(gray, 1.1, 3, minSize=(40, 40))
     
     found_face = None
-    # Priority 1: Faces within ROI
     for (x, y, fw, fh) in faces:
         cx, cy = x + fw//2, y + fh//2
         if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
             found_face = (x, y, fw, fh)
             break
     
-    # Priority 2: Fallback to any face in frame if none in ROI
     if not found_face and len(faces) > 0:
         found_face = faces[0]
-        # Draw a visual hint that it's outside center
         cv2.rectangle(frame, (found_face[0], found_face[1]), (found_face[0]+found_face[2], found_face[1]+found_face[3]), (0, 165, 255), 1)
 
     if found_face:
@@ -267,16 +249,18 @@ def process_frame_logic(frame, running_ai=True):
     return result_data, frame
 
 def camera_worker():
-    """Background thread to read from IP Camera and process frames"""
+    """Background thread to handle camera lifecycle"""
     cap = None
     last_reconnect_attempt = 0
     
     while True:
         if state.reset_requested:
             if cap: cap.release()
-            cap = None; state.reset_requested = False
+            cap = None
+            state.reset_requested = False
             with state.lock: state.system_status["camera"] = "Resetting..."
-            time.sleep(1); continue
+            time.sleep(1.5)
+            continue
 
         with state.lock: running = state.is_running
         
@@ -284,17 +268,16 @@ def camera_worker():
             if time.time() - last_reconnect_attempt > 2:
                 last_reconnect_attempt = time.time()
                 try:
-                    temp_cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-                    if temp_cap.isOpened():
-                        cap = temp_cap
+                    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+                    if cap.isOpened():
                         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-                        with state.lock: state.system_status["camera"] = "Default Camera Ready"
-                    else: temp_cap.release()
+                        with state.lock: state.system_status["camera"] = "Hardware Active"
+                    else: 
+                        cap.release(); cap = None
                 except: pass
             else:
-                time.sleep(1)
-                continue
+                time.sleep(1); continue
 
         if cap:
             ret, frame = cap.read()
@@ -304,11 +287,9 @@ def camera_worker():
 
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (640, 360))
-            
             res_data, processed_frame = process_frame_logic(frame, running)
             
             if running and res_data.get("status") == "Face Locked":
-                 # Update stats for local tracking
                  with state.lock:
                      state.emotion = res_data["emotion"]
                      state.heatmap = res_data["heatmap"]
@@ -316,7 +297,6 @@ def camera_worker():
                      state.age = res_data["age"]
                      state.gender = res_data["gender"]
                      state.emotion_stats[res_data["emotion"]] += 1
-                     state.visitors += 1
             
             _, buf = cv2.imencode('.jpg', processed_frame)
             with state.lock: state.current_frame = buf.tobytes()
@@ -328,68 +308,31 @@ def camera_worker():
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-
-
 @app.post("/reset_camera")
 async def reset_camera():
-    """Forces the camera worker to release current camera and re-scan"""
-    print("[CMD] Received Camera Reset Command")
-    # Quickest way: trigger a "connection lost" state logic if we could, 
-    # but since camera_worker is a loop, we can just close the cap if it exists?
-    # Actually, we can't easily reach into the thread variables.
-    # ALTERNATIVE: Set a flag or better, just rely on our hot-plug logic which is now robust.
-    # BUT, the user wants a manual button.
-    # Let's add a `force_reset` flag to state?
-    with state.lock:
-        state.system_status["camera"] = "Resetting..."
-    # We can't directly kill the cap from here without complex thread sharing.
-    # Instead, we will kill the process and let the worker restart? No.
-    # Simple hack: The worker is robust. We can add a 'reset_requested' flag to DetectionState.
     state.reset_requested = True
-    return {"status": "Camera reset requested"}
-
-
-
+    return {"status": "ok", "message": "Camera hardware reset triggered"}
 
 @app.post("/analyze")
 async def analyze(request: Request):
-    """Processes a base64 frame sent from the browser"""
     data = await request.json()
     image_data = data.get("image")
-    if not image_data:
-        return JSONResponse({"status": "error", "message": "No image data"}, status_code=400)
+    if not image_data: return JSONResponse({"status": "error"}, status_code=400)
     
     try:
-        # Decode base64 image
         header, encoded = image_data.split(",", 1)
         nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        # Process frame
         res_data, processed_frame = process_frame_logic(frame, True)
-        
-        # Encode result frame
         _, buffer = cv2.imencode('.jpg', processed_frame)
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
-        # Update global stats for monitoring
-        if res_data.get("status") == "Face Locked":
-            with state.lock:
-                state.emotion = res_data["emotion"]
-                state.heatmap = res_data["heatmap"]
-                state.message = res_data["message"]
-                state.age = res_data["age"]
-                state.gender = res_data["gender"]
-                state.emotion_stats[res_data["emotion"]] += 1
-                state.visitors += 1
-
         return {
             "status": "ok",
             "image": f"data:image/jpeg;base64,{processed_base64}",
             "data": res_data
         }
     except Exception as e:
-        print(f"[ERR] Analysis failed: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.post("/control")
@@ -402,15 +345,27 @@ async def control(request: Request):
     return {"status": "ok", "is_running": state.is_running}
 
 @app.get("/status")
-def get_status():
+def get_status(session_id: str = None):
+    now = time.time()
     with state.lock:
+        # Track Active Sessions
+        if session_id:
+            if session_id not in state.active_sessions:
+                # First time seeing this session? It's a new visitor!
+                state.total_visitors += 1
+                state.save_visitors()
+            state.active_sessions[session_id] = now
+        
+        # Cleanup inactive sessions (older than 15s)
+        state.active_sessions = {sid: ts for sid, ts in state.active_sessions.items() if now - ts < 15}
+        
         return {
             "is_running": state.is_running,
-            "camera_url": state.camera_url,
             "emotion": state.emotion,
             "age": state.age,
             "gender": state.gender,
-            "visitors": state.visitors,
+            "total_visitors": state.total_visitors,
+            "active_visitors": len(state.active_sessions),
             "message": state.message,
             "heatmap": state.heatmap,
             "emotion_stats": state.emotion_stats,
@@ -429,10 +384,7 @@ def video_feed():
     return StreamingResponse(gen(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 if __name__ == "__main__":
-    # Start Camera Thread only once
     t = threading.Thread(target=camera_worker, daemon=True)
     t.start()
-    print("[INFO] Camera Thread Started")
     port = int(os.environ.get("PORT", 8000))
-    print(f"[INFO] Backend starting on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
