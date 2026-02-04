@@ -313,7 +313,7 @@ export default function DashboardContent() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
 
                 <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
-                    <div className={`glass rounded-3xl overflow-hidden relative flex-grow min-h-[450px] md:min-h-[600px] ${isMobile ? 'aspect-[3/4]' : 'aspect-video'} border-2 transition-colors duration-1000 bg-slate-950 flex items-center justify-center`} style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
+                    <div className={`glass rounded-3xl overflow-hidden relative flex-grow min-h-[450px] md:min-h-[600px] ${isMobile ? 'aspect-[2/3]' : 'aspect-video'} border-2 transition-colors duration-1000 bg-black flex items-center justify-center`} style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
 
                         {/* Hidden processing canvas */}
                         <canvas ref={canvasRef} width={320} height={180} style={{ display: 'none' }} />
@@ -325,8 +325,8 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full ${isMobile ? 'object-cover' : 'object-contain'} transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
-                                style={{ transform: 'scaleX(-1)' }} // Mirror Mode
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                             />
                         )}
 
@@ -335,8 +335,8 @@ export default function DashboardContent() {
                                 {/* AI Processed Overlay */}
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`w-full h-full ${isMobile ? 'object-cover' : 'object-contain'} relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
-                                    style={{ transform: 'scaleX(-1)' }} // Mirror Mode
+                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                                     alt="AI Stream"
                                     key={streamKey}
                                 />
