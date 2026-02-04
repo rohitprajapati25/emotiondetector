@@ -61,6 +61,7 @@ export default function DashboardContent() {
     const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const aiImgRef = useRef<HTMLImageElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
     useEffect(() => {
@@ -149,7 +150,10 @@ export default function DashboardContent() {
 
                                 if (res.ok) {
                                     const result = await res.json();
-                                    setProcessedImage(result.image);
+                                    if (aiImgRef.current) {
+                                        aiImgRef.current.src = result.image;
+                                        aiImgRef.current.style.opacity = "1";
+                                    }
                                 }
                             } catch (err) {
                                 console.error("Cloud Analytics error:", err);
@@ -325,20 +329,20 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                className="absolute inset-0 w-full h-full object-cover"
                                 style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                             />
                         )}
 
                         {isRunning ? (
                             <>
-                                {/* AI Processed Overlay */}
+                                {/* AI Processed Overlay - Direct DOM Update for zero-lag */}
                                 <img
-                                    src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-none ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    ref={aiImgRef}
+                                    src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : ""}
+                                    className="absolute inset-0 w-full h-full object-cover relative z-10 transition-none opacity-0"
                                     style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                                     alt="AI Stream"
-                                    key={streamKey}
                                 />
 
                                 <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-20">
