@@ -15,7 +15,7 @@ const getBaseUrl = () => {
     }
 
     // 4. Default Fallback: Cloudflare Tunnel for Vercel/Production
-    return "https://alternatives-drawing-enabling-heights.trycloudflare.com";
+    return "https://gary-epinions-fifteen-understood.trycloudflare.com";
 };
 
 export const API_BASE_URL = getBaseUrl();
