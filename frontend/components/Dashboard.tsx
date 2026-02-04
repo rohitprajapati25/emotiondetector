@@ -111,52 +111,65 @@ export default function DashboardContent() {
         }
     }, [isRunning, isLocalHost, isMobile]);
 
-    // Optimized Frame Capture Loop (Faster upload)
+    // Ultra-Optimized Frame Capture Loop (Per User Guide)
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (!isLocalHost && isRunning) {
-            interval = setInterval(async () => {
-                if (!videoRef.current || !canvasRef.current || isAnalyzingRef.current) return;
+        let frameId: number;
+        let lastTimestamp = 0;
+        const FPS_THROTTLE = isMobile ? 4 : 6; // 4-6 frames per second is perfect for AI
+        const interval = 1000 / FPS_THROTTLE;
 
-                const video = videoRef.current;
-                const canvas = canvasRef.current;
+        const processFrame = async (timestamp: number) => {
+            if (!isRunning) return;
 
-                if (video.readyState < 2) return;
+            if (timestamp - lastTimestamp >= interval) {
+                lastTimestamp = timestamp;
 
-                const ctx = canvas.getContext("2d");
-                if (!ctx) return;
+                if (videoRef.current && canvasRef.current && !isAnalyzingRef.current) {
+                    const video = videoRef.current;
+                    const canvas = canvasRef.current;
 
-                // Lock analysis to prevent lag buildup
-                isAnalyzingRef.current = true;
+                    if (video.readyState >= 2) {
+                        const ctx = canvas.getContext("2d");
+                        if (ctx) {
+                            isAnalyzingRef.current = true;
 
-                // Adjust canvas to match actual video feed size
-                if (canvas.width !== video.videoWidth) {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                }
+                            // Fixed Small Canvas (320x180) = 4x Less data than HD
+                            canvas.width = 320;
+                            canvas.height = 180;
 
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
 
-                try {
-                    const res = await fetch(`${API_BASE_URL}/analyze`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData })
-                    });
+                            try {
+                                const res = await fetch(`${API_BASE_URL}/analyze`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ image: imageData })
+                                });
 
-                    if (res.ok) {
-                        const result = await res.json();
-                        setProcessedImage(result.image);
+                                if (res.ok) {
+                                    const result = await res.json();
+                                    setProcessedImage(result.image);
+                                }
+                            } catch (err) {
+                                console.error("Cloud Analytics error:", err);
+                            } finally {
+                                isAnalyzingRef.current = false;
+                            }
+                        }
                     }
-                } catch (err) {
-                    console.error("Analysis loop failed:", err);
-                } finally {
-                    isAnalyzingRef.current = false;
                 }
-            }, isMobile ? 250 : 180);
+            }
+            frameId = requestAnimationFrame(processFrame);
+        };
+
+        if (!isLocalHost && isRunning) {
+            frameId = requestAnimationFrame(processFrame);
         }
-        return () => clearInterval(interval);
+
+        return () => {
+            if (frameId) cancelAnimationFrame(frameId);
+        };
     }, [isRunning, isLocalHost, isMobile]);
 
     // Polling logic for global stats
