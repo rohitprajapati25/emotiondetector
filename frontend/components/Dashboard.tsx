@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { API_BASE_URL } from "../lib/config";
 import {
     Activity,
     Users,
-    Smile,
-    Camera,
-    Globe,
     RefreshCw,
     AlertCircle,
     Play,
@@ -33,6 +30,8 @@ interface BackendData {
     age: string;
     gender: string;
     visitors: number;
+    total_visitors?: number;
+    active_visitors?: number;
     message: string;
     heatmap: string;
     emotion_stats: EmotionStats;
@@ -461,7 +460,7 @@ export default function DashboardContent() {
                                         <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
                                     </div>
                                     <p className="italic text-slate-300 font-medium leading-relaxed text-sm relative z-10 transition-transform duration-500 group-hover/synthesis:scale-[1.02]">
-                                        "{data.message}"
+                                        &quot;{data.message}&quot;
                                     </p>
                                     <div className="absolute bottom-0 left-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent w-full" />
                                 </div>
@@ -479,11 +478,11 @@ export default function DashboardContent() {
                             <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
                             <div className="flex items-baseline gap-4">
                                 <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter" title="Total unique visitors">
-                                    {(data as any)?.total_visitors || 0}
+                                    {data?.total_visitors || 0}
                                 </h3>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">
-                                        {(data as any)?.active_visitors || 0} Active
+                                        {data?.active_visitors || 0} Active
                                     </span>
                                     <span className="text-[8px] text-slate-600 font-bold uppercase">Live Now</span>
                                 </div>
