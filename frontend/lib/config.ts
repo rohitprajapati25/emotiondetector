@@ -13,7 +13,7 @@ const getBaseUrl = () => {
     }
 
     // Default fallback to Cloudflare Tunnel for Vercel/Production
-    return "https://costumes-wool-member-administrators.trycloudflare.com";
+    return "https://human-foster-instructors-clone.trycloudflare.com";
 };
 
 export const API_BASE_URL = getBaseUrl();
