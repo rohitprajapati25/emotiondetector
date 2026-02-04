@@ -355,9 +355,6 @@ async def analyze(request: Request):
         nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
-        # Mirror frame for natural movement (Selfie mode)
-        frame = cv2.flip(frame, 1)
-        
         # Process frame
         res_data, processed_frame = process_frame_logic(frame, True)
         

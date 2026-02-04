@@ -325,7 +325,8 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 scale-x-[-1] ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                style={{ transform: 'scaleX(-1)' }} // Mirror mode for intuitive movement
                             />
                         )}
 
@@ -335,6 +336,7 @@ export default function DashboardContent() {
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
                                     className={`w-full h-full object-contain relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ transform: 'scaleX(-1)' }} // Mirror mode for intuitive movement
                                     alt="AI Stream"
                                     key={streamKey}
                                 />
