@@ -45,7 +45,8 @@ const EMOTION_THEME_MAP = {
     'Neutral': 'amber',
     'Surprise': 'pink',
     'Fear': 'purple',
-    'Disgust': 'teal'
+    'Disgust': 'teal',
+    'Contempt': 'indigo'
 };
 
 export default function DashboardContent() {
