@@ -3,7 +3,7 @@
 :root {
   --background: #05070a;
   --foreground: #f8fafc;
-  
+
   --happy: #22c55e;
   --sad: #3b82f6;
   --angry: #ef4444;
@@ -11,8 +11,9 @@
   --pink: #ec4899;
   --purple: #a855f7;
   --teal: #14b8a6;
-  
-  --accent-color: var(--amber); /* Default */
+
+  --accent-color: var(--amber);
+  /* Default */
 }
 
 @theme inline {
@@ -48,24 +49,19 @@ body {
   box-shadow: 0 0 20px color-mix(in srgb, var(--accent-color) 10%, transparent);
 }
 
-.glass-dark {
-  background: rgba(2, 6, 17, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5);
-}
-
 /* Animations */
 @keyframes pulse-glow {
-  0% { box-shadow: 0 0 8px var(--accent-color); opacity: 0.8; }
-  50% { box-shadow: 0 0 24px var(--accent-color); opacity: 1; }
-  100% { box-shadow: 0 0 8px var(--accent-color); opacity: 0.8; }
-}
+  0% {
+    box-shadow: 0 0 5px var(--accent-color);
+  }
 
-@keyframes scan {
-  0% { transform: translateY(-100%); opacity: 0; }
-  50% { opacity: 0.5; }
-  100% { transform: translateY(1000%); opacity: 0; }
+  50% {
+    box-shadow: 0 0 20px var(--accent-color);
+  }
+
+  100% {
+    box-shadow: 0 0 5px var(--accent-color);
+  }
 }
 
 .animate-glow {
@@ -73,23 +69,45 @@ body {
 }
 
 .bg-grid {
-  background-image: 
-    linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 /* Emotion Color Overrides */
-[data-emotion="Happy"] { --accent-color: var(--happy); }
-[data-emotion="Sad"] { --accent-color: var(--sad); }
-[data-emotion="Angry"] { --accent-color: var(--angry); }
-[data-emotion="Neutral"] { --accent-color: var(--amber); }
-[data-emotion="Surprise"] { --accent-color: var(--pink); }
-[data-emotion="Fear"] { --accent-color: var(--purple); }
-[data-emotion="Disgust"] { --accent-color: var(--teal); }
+[data-emotion="Happy"] {
+  --accent-color: var(--happy);
+}
+
+[data-emotion="Sad"] {
+  --accent-color: var(--sad);
+}
+
+[data-emotion="Angry"] {
+  --accent-color: var(--angry);
+}
+
+[data-emotion="Neutral"] {
+  --accent-color: var(--amber);
+}
+
+[data-emotion="Surprise"] {
+  --accent-color: var(--pink);
+}
+
+[data-emotion="Fear"] {
+  --accent-color: var(--purple);
+}
+
+[data-emotion="Disgust"] {
+  --accent-color: var(--teal);
+}
 
 /* Mission Control Typography */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
