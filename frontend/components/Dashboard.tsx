@@ -116,7 +116,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 15 : 30; // 30 FPS for "True Video" feel
+        const FPS_THROTTLE = isMobile ? 30 : 60; // 60 FPS for "Real Video" response
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -134,12 +134,12 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Smallest usable dimensions (240p) for instant upload
-                            canvas.width = 256;
-                            canvas.height = 144;
+                            // Micro-Resolution (160p) for instant cloud round-trip
+                            canvas.width = 160;
+                            canvas.height = 90;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", 0.1); // Ultra-low quality = Ultra-fast speed
+                            const imageData = canvas.toDataURL("image/jpeg", 0.05); // Minimum quality = Maximum Speed
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -153,7 +153,6 @@ export default function DashboardContent() {
                                     // Update Image directly (Direct DOM)
                                     if (aiImgRef.current) {
                                         aiImgRef.current.src = result.image;
-                                        aiImgRef.current.style.opacity = "1";
                                     }
                                     // Update Labels (React State)
                                     if (result.data) {
@@ -349,7 +348,7 @@ export default function DashboardContent() {
                                 <img
                                     ref={aiImgRef}
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : ""}
-                                    className="absolute inset-0 w-full h-full object-cover relative z-10 transition-none opacity-0"
+                                    className="absolute inset-0 w-full h-full object-cover relative z-10 transition-none"
                                     style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                                     alt="AI Stream"
                                 />
