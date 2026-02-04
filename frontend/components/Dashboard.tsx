@@ -565,6 +565,8 @@
 
 
 
+
+
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -576,10 +578,10 @@ import {
     AlertCircle,
     Play,
     Pause,
-    Power
+    Power,
 } from "lucide-react";
 
-/* ================= TYPES (UNCHANGED) ================= */
+/* ================= TYPES ================= */
 interface EmotionStats {
     [key: string]: number;
 }
@@ -621,8 +623,9 @@ export default function DashboardContent() {
     const [error, setError] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false);
 
-    /* ================= SESSION ID (ALREADY CORRECT) ================= */
+    /* ================= SESSION ID ================= */
     const sessionId = useMemo(() => {
+        if (typeof window === "undefined") return "";
         const key = "aura_session_id";
         let id = localStorage.getItem(key);
         if (!id) {
@@ -642,34 +645,39 @@ export default function DashboardContent() {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
-    /* =========================================================
-       🔥 NEW FEATURE: VISITOR LEAVE TRACKING (ONLY ADDITION)
-       ========================================================= */
+    /* =================================================
+       ✅ VISITOR LEAVE TRACKING (BUILD SAFE)
+       ================================================= */
     useEffect(() => {
         if (!sessionId) return;
+        if (typeof window === "undefined") return;
 
         const leaveSite = () => {
+            if (typeof navigator === "undefined") return;
+
             const payload = JSON.stringify({ session_id: sessionId });
             const blob = new Blob([payload], { type: "application/json" });
             navigator.sendBeacon(`${API_BASE_URL}/leave`, blob);
         };
 
         window.addEventListener("beforeunload", leaveSite);
-        document.addEventListener("visibilitychange", () => {
+
+        const handleVisibility = () => {
             if (document.visibilityState === "hidden") {
                 leaveSite();
             }
-        });
+        };
+
+        document.addEventListener("visibilitychange", handleVisibility);
 
         return () => {
             leaveSite();
             window.removeEventListener("beforeunload", leaveSite);
+            document.removeEventListener("visibilitychange", handleVisibility);
         };
     }, [sessionId]);
-    /* ========================================================= */
 
-    /* ================= EXISTING EFFECTS (UNCHANGED) ================= */
-
+    /* ================= MOUNT CHECK ================= */
     useEffect(() => {
         setMounted(true);
         if (typeof window !== "undefined") {
@@ -683,8 +691,10 @@ export default function DashboardContent() {
         }
     }, []);
 
-    /* ================= STATUS POLLING (ALREADY DOES +1) ================= */
+    /* ================= STATUS POLLING (+1 VISITOR) ================= */
     useEffect(() => {
+        if (!sessionId) return;
+
         let isMounted = true;
 
         const fetchStatus = async () => {
@@ -697,9 +707,7 @@ export default function DashboardContent() {
 
                 if (isMounted) {
                     setData((prev) =>
-                        JSON.stringify(prev) === JSON.stringify(json)
-                            ? prev
-                            : json
+                        JSON.stringify(prev) === JSON.stringify(json) ? prev : json
                     );
                     setError(null);
                     setLoading(false);
@@ -711,17 +719,50 @@ export default function DashboardContent() {
 
         fetchStatus();
         const interval = setInterval(fetchStatus, 3000);
+
         return () => {
             isMounted = false;
             clearInterval(interval);
         };
     }, [sessionId]);
 
-    /* ================= UI (UNCHANGED BELOW) ================= */
-    // ⬇️ EVERYTHING BELOW IS EXACTLY YOUR ORIGINAL CODE
-    // (Visitor Matrix UI already reads data?.total_visitors & active_visitors)
+    if (!mounted) return null;
 
-    /* ... YOUR FULL UI CODE CONTINUES UNCHANGED ... */
+    const currentEmotion = data?.emotion || "Neutral";
+    const accentColor = `var(--${data?.heatmap || "amber"})`;
+
+    /* ================= UI (UNCHANGED) ================= */
+    return (
+        <main className="min-h-screen p-3 md:p-6 bg-[#020617] text-slate-50">
+            {/* Visitor Matrix Card */}
+            <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 flex items-center justify-between shadow-2xl">
+                <div>
+                    <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">
+                        Visitor Matrix
+                    </p>
+                    <h3 className="text-5xl md:text-7xl font-black text-white">
+                        {data?.total_visitors || 0}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {data?.active_visitors || 0} Live Now
+                        </span>
+                    </div>
+                </div>
+                <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500">
+                    <Users className="w-8 h-8" />
+                </div>
+            </div>
+
+            {error && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 glass-dark px-8 py-4 rounded-2xl border border-red-500/40 flex items-center gap-4">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-red-500">
+                        {error}
+                    </span>
+                </div>
+            )}
+        </main>
+    );
 }
-
-
