@@ -60,7 +60,8 @@ export default function DashboardContent() {
     const [isLocalHost, setIsLocalHost] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null); // For processing
+    const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null); // For drawing UI
     const aiImgRef = useRef<HTMLImageElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
@@ -159,8 +160,27 @@ export default function DashboardContent() {
                                         setData(prev => prev ? ({
                                             ...prev,
                                             ...result.data,
-                                            // Keep stats/visitors from the polling or merge them if needed
                                         }) : null);
+
+                                        // NEW: Draw Overlay Directly on smooth video
+                                        if (overlayCanvasRef.current && result.data.box) {
+                                            const canvas = overlayCanvasRef.current;
+                                            const ctx = canvas.getContext('2d');
+                                            if (ctx) {
+                                                const [bx, by, bw, bh] = result.data.box;
+                                                const scaleX = canvas.width / 160; // Based on processing resolution
+                                                const scaleY = canvas.height / 90;
+
+                                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                ctx.strokeStyle = `var(--${result.data.heatmap || 'amber'})`;
+                                                ctx.lineWidth = 3;
+                                                ctx.strokeRect(bx * scaleX, by * scaleY, bw * scaleX, bh * scaleY);
+
+                                                ctx.fillStyle = `var(--${result.data.heatmap || 'amber'})`;
+                                                ctx.font = 'bold 12px sans-serif';
+                                                ctx.fillText(result.data.emotion, bx * scaleX, (by * scaleY) - 5);
+                                            }
+                                        }
                                     }
                                 }
                             } catch (err) {
@@ -328,37 +348,37 @@ export default function DashboardContent() {
                     <div className={`rounded-3xl overflow-hidden relative flex-grow min-h-[450px] md:min-h-[600px] ${isMobile ? 'aspect-[2/3]' : 'aspect-video'} border-2 transition-colors duration-1000 bg-black flex items-center justify-center`} style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
 
                         {/* Hidden processing canvas */}
-                        <canvas ref={canvasRef} width={320} height={180} style={{ display: 'none' }} />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {/* Local Video Feed for Instant Feedback */}
-                        {isRunning && !isLocalHost && (
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="absolute inset-0 w-full h-full object-cover"
-                                style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
-                            />
-                        )}
-
-                        {isRunning ? (
+                        {/* Direct Video Feed (Always 100% Smooth) */}
+                        {isRunning && (
                             <>
-                                {/* AI Processed Overlay - Direct DOM Update for zero-lag */}
-                                <img
-                                    ref={aiImgRef}
-                                    src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : ""}
-                                    className="absolute inset-0 w-full h-full object-cover relative z-10 transition-none"
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="absolute inset-0 w-full h-full object-cover"
                                     style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
-                                    alt="AI Stream"
                                 />
 
-                                <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-20">
+                                {/* HUD Overlay Canvas for Smooth AI Drawings */}
+                                <canvas
+                                    ref={overlayCanvasRef}
+                                    width={640}
+                                    height={360}
+                                    className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
+                                    style={{ transform: 'scaleX(-1)' }}
+                                />
+
+                                <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-30">
                                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                    <span className="text-[8px] md:text-xs font-black tracking-widest uppercase text-white">LIVE AI ANALYSIS</span>
+                                    <span className="text-[8px] md:text-xs font-black tracking-widest uppercase text-white">LIVE AI STREAMING</span>
                                 </div>
                             </>
-                        ) : (
+                        )}
+
+                        {!isRunning && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-40 bg-slate-900">
                                 <Power className="w-20 h-20 text-slate-600" />
                                 <p className="font-black uppercase tracking-[0.5em] text-sm text-slate-500 text-center">System Standby</p>

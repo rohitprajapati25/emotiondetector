@@ -246,6 +246,7 @@ def process_frame_logic(frame, running_ai=True):
                         "emotion": final_emo,
                         "age": age,
                         "gender": gen,
+                        "box": [int(x), int(y), int(fw), int(fh)], # Added for frontend drawing
                         "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
                         "message": EMOTION_MESSAGES.get(final_emo, "Done")
                     })
