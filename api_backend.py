@@ -232,26 +232,18 @@ def process_frame_logic(frame, running_ai=True):
         "gender": "N/A",
         "heatmap": "amber",
         "message": "Scanning...",
-        "status": "No Face Detected"
+        "status": "No Face Detected",
+        "confidence": 0.0
     }
-
-    # Optimized ROI for "Real Human Face Size"
-    roi_h, roi_w = int(h * 0.75), int(w * 0.5)
-    roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
-    roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
-    
-    cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
     
-    found_face = None
-    for (x, y, fw, fh) in faces:
-        cx, cy = x + fw//2, y + fh//2
-        if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
-            found_face = (x, y, fw, fh)
-            break
-        else:
+    found_face = faces[0] if len(faces) > 0 else None
+    
+    # Mark but don't restrict other faces
+    if len(faces) > 1:
+        for (x, y, fw, fh) in faces[1:]:
             cv2.rectangle(frame, (x, y), (x+fw, y+fh), (60, 60, 60), 1)
 
     if found_face:
@@ -278,7 +270,8 @@ def process_frame_logic(frame, running_ai=True):
                         "age": age,
                         "gender": gen,
                         "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
-                        "message": EMOTION_MESSAGES.get(final_emo, "Done")
+                        "message": EMOTION_MESSAGES.get(final_emo, "Done"),
+                        "confidence": float(np.max(pred) * 100)
                     })
                     
                     color = (0, 255, 0)
