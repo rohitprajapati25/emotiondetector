@@ -1,22 +1,35 @@
-# 🚀 Instant Deployment Guide
+# 🚀 Deployment Steps: Exhibition Mode (Laptop + Cloudflare Tunnel)
 
-### 1. Push to GitHub
+This mode is perfect for demos or exhibitions where you run the heavy AI on your laptop but want the UI accessible via the web.
+
+## 1. Start the Backend (Terminal 1)
+Open a terminal and run:
 ```powershell
-git init; git add .; git commit -m "Deploy"; git branch -M main
-git remote add origin YOUR_REPO_URL
-git push -u origin main
+cd "c:\Users\rohit\Downloads\Emotion Detector\Emotion Detector"
+python api_backend.py
 ```
+*Keep this window open!*
 
-### 2. Deploy Backend (Render)
-1. Go to [Render](https://dashboard.render.com/select-repo).
-2. Connect Repo -> **Web Service**.
-3. **Runtime**: `Docker`.
-4. **Copy the URL** (e.g., `https://backend.onrender.com`).
+## 2. Start the Tunnel (Terminal 2)
+Open a **new** terminal and run:
+```powershell
+cd "c:\Users\rohit\Downloads\Emotion Detector\Emotion Detector"
+.\start_tunnel.bat
+```
+*Keep this window open!*
 
-### 3. Deploy Frontend (Vercel)
-1. Go to [Vercel](https://vercel.com/new).
-2. Import Repo.
-3. **Environment Variables**: 
-   - Key: `NEXT_PUBLIC_API_URL`
-   - Value: `YOUR_RENDER_URL`
-4. Click **Deploy**.
+## 3. Get the Tunnel URL
+If the URL isn't visible, run this in a **new** terminal:
+```powershell
+.\find_tunnel_url.bat
+```
+Copy the URL (e.g., `https://xxxxx.trycloudflare.com`).
+
+## 4. Update Vercel
+1. Go to your Vercel Project Settings -> Environment Variables.
+2. Edit `NEXT_PUBLIC_API_URL` with your **NEW** tunnel URL.
+3. Redeploy the project.
+
+## ✅ Verification
+- Visit your Vercel app.
+- It should connect to your laptop's camera and AI!

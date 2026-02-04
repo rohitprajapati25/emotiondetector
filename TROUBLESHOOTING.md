@@ -650,3 +650,47 @@ Before going live:
 4. Testing components individually
 
 **Good luck! 🚀**
+
+
+---
+
+## ?? Deployment & Cloudflare Issues
+
+### ? Site not connecting to backend (CORS Error)
+
+**Symptoms:**
+- Website loads but shows "Searching..." or connection error
+- Browser Console (F12) shows `Access-Control-Allow-Origin` error
+
+**Solutions:**
+1. **Check Backend CORS:**
+   Ensure `api/status.py` has `allow_credentials=True` in `CORSMiddleware`.
+
+2. **Check Tunnel URL:**
+   The URL in `frontend/lib/config.ts` must match your current running tunnel.
+
+### ? "Remote name could not be resolved"
+
+**Symptoms:**
+- Tunnel URL was working but stopped
+- Error 404 or "Tunnel not found"
+
+**Solutions:**
+1. **Restart Tunnel:**
+   Cloudflare free tunnels expire. Run `.\start_tunnel.bat` again.
+
+2. **Update Vercel:**
+   Get the new URL and update your environment variable `NEXT_PUBLIC_API_URL` on Vercel.
+
+3. **Update Code (Fallback):**
+   Update the fallback URL in `frontend/lib/config.ts` and push to GitHub.
+
+---
+
+## ?? "Exhibition Mode" Checklist (Laptop + Vercel)
+
+1. **Start Backend:** `python api_backend.py`
+2. **Start Tunnel:** `.\start_tunnel.bat`
+3. **Get URL:** `.\find_tunnel_url.bat`
+4. **Update:** Update Vercel Env Var or `config.ts`
+5. **Verify:** Check `https://your-project.vercel.app`

@@ -28,3 +28,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+tunnel_output.txt
+tunnel_output_v2.txt
