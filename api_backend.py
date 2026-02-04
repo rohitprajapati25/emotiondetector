@@ -61,6 +61,38 @@ def draw_neural_dots(frame, box):
     cv2.line(frame, ree, pt(0.5, 0.55), (100, 100, 100), 1)
     cv2.line(frame, pt(0.5, 0.55), pt(0.5, 0.75), (100, 100, 100), 1)
 
+def draw_text_mirrored(frame, text, pos, font, scale, color, thickness):
+    """Draws text that will be READABLE after the frontend mirrors the image"""
+    (tw, th), _ = cv2.getTextSize(text, font, scale, thickness)
+    x, y = pos
+    
+    # Create text surface with padding
+    txt_surf = np.zeros((th + 20, tw + 20, 3), dtype=np.uint8)
+    cv2.putText(txt_surf, text, (10, th + 10), font, scale, color, thickness)
+    
+    # Flip the text image horizontally (mirrored for the backend, readable after frontend flip)
+    txt_surf = cv2.flip(txt_surf, 1)
+    
+    # Calculate target ROI on frame
+    h, w = frame.shape[:2]
+    y_start = max(0, y - th - 15)
+    y_end = min(h, y_start + txt_surf.shape[0])
+    x_start = max(0, x - 10)
+    x_end = min(w, x_start + txt_surf.shape[1])
+    
+    # Crop surfaces to match
+    overlay = txt_surf[0:y_end-y_start, 0:x_end-x_start]
+    roi = frame[y_start:y_end, x_start:x_end]
+    
+    # Alpha-like blending using masks
+    gray = cv2.cvtColor(overlay, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+    mask_inv = cv2.bitwise_not(mask)
+    
+    img_bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
+    img_fg = cv2.bitwise_and(overlay, overlay, mask=mask)
+    frame[y_start:y_end, x_start:x_end] = cv2.add(img_bg, img_fg)
+
 MEDIAPIPE_ENABLED = False # Using Stable Neural Overlay instead
 
 # ============================================================================
@@ -251,8 +283,9 @@ def process_frame_logic(frame, running_ai=True):
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                    # Simplified: Only emotion, and mirrored for readability
+                    draw_text_mirrored(frame, final_emo, (x, y), 
+                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
     else:
         result_data["message"] = "Please step into the Zone"
 
@@ -288,14 +321,15 @@ def camera_worker():
                 time.sleep(1)
                 continue
 
-        if cap:
-            ret, frame = cap.read()
-            if not ret:
-                cap.release(); cap = None
-                continue
+            if cap:
+                ret, frame = cap.read()
+                if not ret:
+                    cap.release(); cap = None
+                    continue
 
-            frame = cv2.flip(frame, 1)
-            frame = cv2.resize(frame, (640, 360))
+                # Removed: frame = cv2.flip(frame, 1)
+                # We move mirroring entirely to the frontend for CSS-based consistency.
+                frame = cv2.resize(frame, (640, 360))
             
             res_data, processed_frame = process_frame_logic(frame, running)
             
