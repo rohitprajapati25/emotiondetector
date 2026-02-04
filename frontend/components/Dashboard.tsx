@@ -115,7 +115,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 4 : 6; // 4-6 frames per second is perfect for AI
+        const FPS_THROTTLE = isMobile ? 8 : 12; // Increased for "Super Fast" feel
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -138,7 +138,7 @@ export default function DashboardContent() {
                             canvas.height = 180;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.3 : 0.4);
+                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.3); // Compressed for faster transmission
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -313,7 +313,7 @@ export default function DashboardContent() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
 
                 <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
-                    <div className="glass rounded-3xl overflow-hidden relative flex-grow min-h-[300px] md:min-h-[600px] border-2 transition-colors duration-1000" style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
+                    <div className="glass rounded-3xl overflow-hidden relative flex-grow min-h-[300px] md:min-h-[600px] aspect-video border-2 transition-colors duration-1000 bg-black flex items-center justify-center" style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
 
                         {/* Hidden processing canvas */}
                         <canvas ref={canvasRef} width={320} height={180} style={{ display: 'none' }} />
@@ -325,8 +325,8 @@ export default function DashboardContent() {
                                 autoPlay
                                 playsInline
                                 muted
-                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
-                                style={{ transform: 'scaleX(-1)' }} // Sharp Mirror Mode
+                                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                style={{ transform: 'scaleX(-1)' }} // Mirror Mode
                             />
                         )}
 
@@ -335,8 +335,8 @@ export default function DashboardContent() {
                                 {/* AI Processed Overlay */}
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
-                                    style={{ transform: 'scaleX(-1)' }} // Sharp Mirror Mode
+                                    className={`w-full h-full object-contain relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ transform: 'scaleX(-1)' }} // Mirror Mode
                                     alt="AI Stream"
                                     key={streamKey}
                                 />
