@@ -211,8 +211,7 @@ def process_frame_logic(frame, running_ai=True):
     cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Optimized for SPEED: High scaleFactor (1.3) and minSize for video-like response
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5, minSize=(60, 60))
+    faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
     
     found_face = None
     for (x, y, fw, fh) in faces:
@@ -246,7 +245,6 @@ def process_frame_logic(frame, running_ai=True):
                         "emotion": final_emo,
                         "age": age,
                         "gender": gen,
-                        "box": [int(x), int(y), int(fw), int(fh)], # Added for frontend drawing
                         "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
                         "message": EMOTION_MESSAGES.get(final_emo, "Done")
                     })

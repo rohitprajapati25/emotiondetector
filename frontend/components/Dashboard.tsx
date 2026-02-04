@@ -56,12 +56,11 @@ export default function DashboardContent() {
     const [loading, setLoading] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
     const [streamKey, setStreamKey] = useState(0);
+    const [processedImage, setProcessedImage] = useState<string | null>(null);
     const [isLocalHost, setIsLocalHost] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement | null>(null); // For processing
-    const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null); // For drawing UI
-    const aiImgRef = useRef<HTMLImageElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
     useEffect(() => {
@@ -112,11 +111,11 @@ export default function DashboardContent() {
         }
     }, [isRunning, isLocalHost, isMobile]);
 
-    // Ultra-Optimized Frame Capture Loop
+    // Ultra-Optimized Frame Capture Loop (Per User Guide)
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 30 : 60; // 60 FPS for "Real Video" response
+        const FPS_THROTTLE = isMobile ? 8 : 12; // Increased for "Super Fast" feel
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -134,12 +133,12 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Micro-Resolution (160p) for instant cloud round-trip
-                            canvas.width = 160;
-                            canvas.height = 90;
+                            // Fixed Small Canvas (320x180) = 4x Less data than HD
+                            canvas.width = 320;
+                            canvas.height = 180;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", 0.05); // Minimum quality = Maximum Speed
+                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.3); // Compressed for faster transmission
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -150,30 +149,7 @@ export default function DashboardContent() {
 
                                 if (res.ok) {
                                     const result = await res.json();
-
-                                    // NEW: Fluid Canvas Blending (Overlays AI data onto smooth video)
-                                    if (!isLocalHost && overlayCanvasRef.current && result.image) {
-                                        const canvas = overlayCanvasRef.current;
-                                        const ctx = canvas.getContext('2d');
-                                        if (ctx) {
-                                            const aiImg = new Image();
-                                            aiImg.onload = () => {
-                                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                                ctx.globalAlpha = 0.95; // High visibility blending
-                                                ctx.drawImage(aiImg, 0, 0, canvas.width, canvas.height);
-                                                ctx.globalAlpha = 1.0;
-                                            };
-                                            aiImg.src = result.image;
-                                        }
-                                    }
-
-                                    // Update State Labels
-                                    if (result.data) {
-                                        setData(prev => prev ? ({
-                                            ...prev,
-                                            ...result.data,
-                                        }) : null);
-                                    }
+                                    setProcessedImage(result.image);
                                 }
                             } catch (err) {
                                 console.error("Cloud Analytics error:", err);
@@ -211,7 +187,7 @@ export default function DashboardContent() {
                         return json;
                     });
                     setError(null);
-                    setLoading(false);
+                    setLoading(false); // Only stop loading when we actually have data
                 }
             } catch (err) {
                 if (isMounted) setError("Cloud Brain: Connecting...");
@@ -248,7 +224,9 @@ export default function DashboardContent() {
     const currentEmotion = data?.emotion || "Neutral";
     const accentColor = `var(--${data?.heatmap || 'amber'})`;
 
-    const isCameraConnected = !!videoRef.current?.srcObject;
+    // In Cloud mode, we check if the Browser Camera is active
+    const isBrowserCameraActive = !!videoRef.current?.srcObject;
+    const isCameraConnected = isBrowserCameraActive;
 
     return (
         <main className="min-h-screen p-4 md:p-8 bg-grid relative flex flex-col gap-6 overflow-x-hidden" data-emotion={currentEmotion}>
@@ -261,8 +239,8 @@ export default function DashboardContent() {
                         ? `inset 0 0 120px color-mix(in srgb, ${accentColor} 30%, transparent)`
                         : 'inset 0 0 120px rgba(255, 0, 0, 0.1)',
                     border: isRunning
-                        ? `${isMobile ? '3px' : '6px'} solid color-mix(in srgb, ${accentColor} 50%, transparent)`
-                        : `${isMobile ? '3px' : '6px'} solid rgba(255, 0, 0, 0.2)`
+                        ? `${mounted && window.innerWidth < 768 ? '3px' : '6px'} solid color-mix(in srgb, ${accentColor} 50%, transparent)`
+                        : `${mounted && window.innerWidth < 768 ? '3px' : '6px'} solid rgba(255, 0, 0, 0.2)`
                 }}
             />
 
@@ -280,6 +258,7 @@ export default function DashboardContent() {
                     </div>
                 </div>
 
+                {/* System Camera Status */}
                 <div className="flex-grow w-full lg:max-w-xl px-0 lg:px-4 flex items-center justify-start lg:justify-center order-3 lg:order-2">
                     <div className={`w-full lg:w-auto px-4 md:px-6 py-2 md:py-3 rounded-xl border flex items-center gap-3 transition-colors duration-500 ${isCameraConnected ? 'glass-accent border-green-500/30' : 'bg-red-900/10 border-red-500/20'}`}>
                         {isCameraConnected ? (
@@ -330,48 +309,44 @@ export default function DashboardContent() {
                 </div>
             </header>
 
+            {/* Main Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow relative z-10">
+
                 <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 md:gap-6 relative">
                     <div className={`rounded-3xl overflow-hidden relative flex-grow min-h-[450px] md:min-h-[600px] ${isMobile ? 'aspect-[2/3]' : 'aspect-video'} border-2 transition-colors duration-1000 bg-black flex items-center justify-center`} style={{ borderColor: `color-mix(in srgb, ${accentColor} 25%, transparent)` }}>
-                        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-                        {isRunning && (
-                            <>
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
-                                />
+                        {/* Hidden processing canvas */}
+                        <canvas ref={canvasRef} width={320} height={180} style={{ display: 'none' }} />
 
-                                <canvas
-                                    ref={overlayCanvasRef}
-                                    width={640}
-                                    height={360}
-                                    className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none transition-opacity duration-300"
-                                    style={{ transform: 'scaleX(-1)' }}
-                                />
-
-                                {isLocalHost && (
-                                    <img
-                                        ref={aiImgRef}
-                                        src={`${API_BASE_URL}/video_feed?sk=${streamKey}`}
-                                        className="absolute inset-0 w-full h-full object-cover relative z-10 transition-none"
-                                        style={{ transform: 'scaleX(-1)' }}
-                                        alt="AI Stream"
-                                    />
-                                )}
-
-                                <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-30">
-                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                    <span className="text-[8px] md:text-xs font-black tracking-widest uppercase text-white">LIVE AI STREAMING</span>
-                                </div>
-                            </>
+                        {/* Local Video Feed for Instant Feedback */}
+                        {isRunning && !isLocalHost && (
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${processedImage ? 'opacity-30' : 'opacity-100'}`}
+                                style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
+                            />
                         )}
 
-                        {!isRunning && (
+                        {isRunning ? (
+                            <>
+                                {/* AI Processed Overlay */}
+                                <img
+                                    src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
+                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-300 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
+                                    alt="AI Stream"
+                                    key={streamKey}
+                                />
+
+                                <div className="absolute top-4 left-4 px-3 py-1.5 glass-accent rounded-xl flex items-center gap-2 border border-white/10 z-20">
+                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                    <span className="text-[8px] md:text-xs font-black tracking-widest uppercase text-white">LIVE AI ANALYSIS</span>
+                                </div>
+                            </>
+                        ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-40 bg-slate-900">
                                 <Power className="w-20 h-20 text-slate-600" />
                                 <p className="font-black uppercase tracking-[0.5em] text-sm text-slate-500 text-center">System Standby</p>
@@ -379,6 +354,7 @@ export default function DashboardContent() {
                         )}
                     </div>
 
+                    {/* Result HUD */}
                     {isRunning && (
                         <div className="lg:absolute lg:inset-x-8 lg:bottom-8 static flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 pointer-events-none mt-2 lg:mt-0 z-20">
                             <div className="glass p-4 md:p-8 rounded-2xl flex flex-col gap-1 md:gap-2 min-w-[300px] border-l-8 backdrop-blur-2xl shadow-2xl transition-all duration-1000 pointer-events-auto" style={{ borderColor: accentColor }}>
@@ -454,3 +430,19 @@ export default function DashboardContent() {
         </main>
     );
 }
+
+export function StatusBadge({ icon, label, status }: { icon: React.ReactNode, label: string, status?: string }) {
+    const isActive = status?.includes('Connected') || status?.includes('Ready') || status === 'Running';
+    return (
+        <div className="glass px-5 py-3 rounded-2xl flex items-center gap-4 border border-white/5">
+            <div className={isActive ? 'text-green-400' : 'text-slate-400'}>{icon}</div>
+            <div className="flex flex-col">
+                <span className="text-[9px] text-slate-600 font-black uppercase">{label}</span>
+                <span className="text-xs font-bold text-slate-200 mt-1">{status || "..."}</span>
+            </div>
+        </div>
+    );
+}
+
+
+
