@@ -115,7 +115,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 12 : 24; // Pushed to "Ultra Smooth" (24 FPS)
+        const FPS_THROTTLE = isMobile ? 15 : 30; // 30 FPS for "True Video" feel
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
@@ -133,12 +133,12 @@ export default function DashboardContent() {
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Fixed Small Canvas (320x180) = 4x Less data than HD
-                            canvas.width = 320;
-                            canvas.height = 180;
+                            // Smallest usable dimensions (240p) for instant upload
+                            canvas.width = 256;
+                            canvas.height = 144;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/jpeg", isMobile ? 0.2 : 0.25); // Faster processing quality
+                            const imageData = canvas.toDataURL("image/jpeg", 0.1); // Ultra-low quality = Ultra-fast speed
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
@@ -335,7 +335,7 @@ export default function DashboardContent() {
                                 {/* AI Processed Overlay */}
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-opacity duration-75 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
+                                    className={`absolute inset-0 w-full h-full object-cover relative z-10 transition-none ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0'}`}
                                     style={{ transform: 'scaleX(-1)' }} // Native Mirror Mode
                                     alt="AI Stream"
                                     key={streamKey}
