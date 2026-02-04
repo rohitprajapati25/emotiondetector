@@ -192,7 +192,10 @@ export default function DashboardContent() {
 
     const currentEmotion = data?.emotion || "Neutral";
     const accentColor = `var(--${data?.heatmap || 'amber'})`;
-    const isCameraConnected = data?.system_status.camera.includes("Ready") || data?.system_status.camera.includes("Connected");
+
+    // In Cloud mode, we check if the Browser Camera is active
+    const isBrowserCameraActive = !!videoRef.current?.srcObject;
+    const isCameraConnected = isBrowserCameraActive;
 
     return (
         <main className="min-h-screen p-4 md:p-8 bg-grid relative flex flex-col gap-6 overflow-x-hidden" data-emotion={currentEmotion}>
@@ -241,7 +244,7 @@ export default function DashboardContent() {
                         <div className="flex flex-col">
                             <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest text-slate-500">Video Source</span>
                             <span className={`text-xs md:text-sm font-bold truncate max-w-[150px] md:max-w-none ${isCameraConnected ? 'text-green-400' : 'text-red-400'}`}>
-                                {data?.system_status.camera || "Searching..."}
+                                {isCameraConnected ? "Browser Camera Active" : "Searching..."}
                             </span>
                         </div>
                     </div>
