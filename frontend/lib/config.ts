@@ -13,7 +13,7 @@ const getBaseUrl = () => {
     }
 
     // Default fallback to Cloudflare Tunnel for Vercel/Production
-    return "https://chef-cooper-clock-source.trycloudflare.com";
+    return "https://costumes-wool-member-administrators.trycloudflare.com";
 };
 
 export const API_BASE_URL = getBaseUrl();
