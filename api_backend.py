@@ -142,23 +142,34 @@ class DetectionState:
         }
         self.reset_requested = False
         
-        # Visitor Persistence
-        self.total_visitors = self._load_total_visitors()
+        # Visitor Persistence (Now tracking individual IDs for true uniqueness)
+        self.known_sessions = self._load_known_sessions()
+        self.total_visitors = len(self.known_sessions)
         self.active_sessions = {} # {session_id: last_seen_timestamp}
         self.lock = threading.Lock()
 
-    def _load_total_visitors(self):
+    def _load_known_sessions(self):
         try:
             if os.path.exists("visitors.json"):
                 with open("visitors.json", "r") as f:
-                    return json.load(f).get("total_visitors", 0)
-        except: pass
-        return 0
+                    data = json.load(f)
+                    # Support both old format (int) and new format (list of IDs)
+                    stored = data.get("sessions", [])
+                    if isinstance(stored, list):
+                        return set(stored)
+                    # Fallback for old count-only format
+                    return set() 
+        except Exception as e:
+            print(f"[ERR] Load sessions error: {e}")
+        return set()
 
     def save_visitors(self):
         try:
             with open("visitors.json", "w") as f:
-                json.dump({"total_visitors": self.total_visitors}, f)
+                json.dump({
+                    "total_visitors": len(self.known_sessions),
+                    "sessions": list(self.known_sessions)
+                }, f)
         except Exception as e:
             print(f"[ERR] Failed to save visitors: {e}")
 
@@ -351,10 +362,13 @@ def get_status(session_id: str = None):
     with state.lock:
         # Track Active Sessions
         if session_id:
-            if session_id not in state.active_sessions:
-                # First time seeing this session? It's a new visitor!
-                state.total_visitors += 1
+            if session_id not in state.known_sessions:
+                # NEW Unique Visitor detected
+                state.known_sessions.add(session_id)
+                state.total_visitors = len(state.known_sessions)
                 state.save_visitors()
+                print(f"[SYS] New Unique Visitor: {session_id}")
+            
             state.active_sessions[session_id] = now
         
         # Cleanup inactive sessions (older than 15s)
