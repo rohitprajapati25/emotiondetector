@@ -257,21 +257,21 @@ export default function DashboardContent() {
             />
 
             {/* Premium Control Header */}
-            <header className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-4 glass-dark p-3 md:px-8 md:py-3 rounded-[2rem] border border-white/5 shadow-2xl">
-                <div className="flex items-center gap-4">
+            <header className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-3 glass-dark p-3 md:px-8 md:py-3 rounded-2xl md:rounded-[2rem] border border-white/5 shadow-2xl">
+                <div className="flex items-center gap-3 md:gap-4 w-full lg:w-auto">
                     <div className="relative group">
                         <div className="absolute inset-0 bg-white/5 blur-xl rounded-full scale-150 transition-transform group-hover:scale-110" />
-                        <div className="relative p-2.5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-inner">
-                            <Activity className="w-5 h-5 md:w-6 md:h-6 transition-colors duration-700" style={{ color: accentColor }} />
+                        <div className="relative p-2 rounded-xl md:p-2.5 md:rounded-2xl bg-slate-900/80 border border-white/10 shadow-inner">
+                            <Activity className="w-4 h-4 md:w-6 md:h-6 transition-colors duration-700" style={{ color: accentColor }} />
                         </div>
                     </div>
                     <div>
-                        <h1 className="text-lg md:text-xl font-black tracking-tighter text-white flex items-center gap-2">
+                        <h1 className="text-base md:text-xl font-black tracking-tighter text-white flex items-center gap-2">
                             AURA <span className="text-slate-500 font-extralight tracking-widest">VISION</span>
                         </h1>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 md:gap-2">
                             <span className={`w-1 h-1 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} />
-                            <p className="text-slate-500 uppercase text-[7px] tracking-[0.4em] font-black">Neural Core v6.2.0</p>
+                            <p className="text-slate-500 uppercase text-[6px] md:text-[7px] tracking-[0.4em] font-black">Neural Core v6.2.0</p>
                         </div>
                     </div>
                 </div>
@@ -310,8 +310,8 @@ export default function DashboardContent() {
                     <button
                         onClick={() => toggleSystem(isRunning ? 'stop' : 'start')}
                         className={`flex-grow lg:flex-none px-8 md:px-12 py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 active:scale-95 ${isRunning
-                                ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-lg hover:border-red-500/40'
-                                : 'bg-indigo-600 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500 hover:-translate-y-0.5'
+                            ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-lg hover:border-red-500/40'
+                            : 'bg-indigo-600 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500 hover:-translate-y-0.5'
                             }`}
                     >
                         {isRunning ? <><Pause className="w-3.5 h-3.5 fill-current" /> Terminate</> : <><Play className="w-3.5 h-3.5 fill-current" /> Initialize</>}
@@ -390,38 +390,38 @@ export default function DashboardContent() {
 
                         {/* Subject Profile (Centerpiece) */}
                         {isRunning && (
-                            <div className="absolute inset-x-4 bottom-4 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
-                                <div className="flex flex-col lg:flex-row items-end justify-between gap-6">
-                                    <div className="w-full lg:w-auto glass-dark p-6 md:p-10 rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] uppercase tracking-[0.4em] font-black text-slate-500">Current Aura</span>
-                                                <div className="h-px w-12 bg-white/10" />
+                            <div className="absolute inset-x-2 bottom-2 md:inset-x-10 md:bottom-10 z-40 pointer-events-none">
+                                <div className="flex flex-col lg:flex-row items-end justify-between gap-4 md:gap-6">
+                                    <div className="w-full lg:w-auto glass-dark p-4 md:p-10 rounded-2xl md:rounded-[3rem] border border-white/10 backdrop-blur-3xl shadow-2xl transition-all duration-700 hover:scale-[1.01] pointer-events-auto group/stats">
+                                        <div className="flex flex-col gap-1 md:gap-2">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] md:tracking-[0.4em] font-black text-slate-500">Current Aura</span>
+                                                <div className="h-px w-8 md:w-12 bg-white/10" />
                                             </div>
-                                            <span className="text-6xl md:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: `0 0 40px ${accentColor}44` }}>
+                                            <span className="text-4xl md:text-6xl lg:text-9xl font-black tracking-tighter transition-all duration-1000 ease-out group-hover/stats:tracking-normal" style={{ color: accentColor, textShadow: isMobile ? `0 0 20px ${accentColor}44` : `0 0 40px ${accentColor}44` }}>
                                                 {currentEmotion}
                                             </span>
                                         </div>
-                                        <div className="flex gap-12 mt-8 pt-8 border-t border-white/5">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Profile</span>
-                                                <span className="font-black text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-2">/</span> {data?.gender}</span>
+                                        <div className="flex gap-6 md:gap-12 mt-4 md:mt-8 pt-4 md:pt-8 border-t border-white/5">
+                                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                                <span className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Profile</span>
+                                                <span className="font-black text-base md:text-2xl text-white tracking-tight">{data?.age} <span className="text-slate-600 font-light mx-1 md:mx-2">/</span> {data?.gender}</span>
                                             </div>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Match</span>
-                                                <div className="flex items-end gap-1.5">
-                                                    <span className="font-black text-2xl text-white">96.8</span>
-                                                    <span className="text-[10px] text-indigo-500 font-black mb-1.5">%</span>
+                                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                                <span className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Match</span>
+                                                <div className="flex items-end gap-1">
+                                                    <span className="font-black text-base md:text-2xl text-white">96.8</span>
+                                                    <span className="text-[8px] md:text-[10px] text-indigo-500 font-black mb-1 md:mb-1.5">%</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {data?.message && (
-                                        <div className="hidden lg:block max-w-sm glass-dark p-6 rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-sm pointer-events-auto hover:text-white transition-colors">
+                                        <div className="hidden md:block max-w-[280px] lg:max-w-sm glass-dark p-4 md:p-6 rounded-xl md:rounded-[2rem] border border-white/5 backdrop-blur-3xl italic text-slate-400 font-medium leading-relaxed text-xs md:text-sm pointer-events-auto hover:text-white transition-colors">
                                             <div className="flex items-center gap-2 mb-2 opacity-30">
-                                                <div className="w-10 h-[1px] bg-slate-400" />
-                                                <span className="text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
+                                                <div className="w-8 md:w-10 h-[1px] bg-slate-400" />
+                                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.3em]">AI Synthesis</span>
                                             </div>
                                             "{data.message}"
                                         </div>
@@ -435,25 +435,25 @@ export default function DashboardContent() {
                 {/* Secondary Intelligence Panel */}
                 <section className="col-span-1 lg:col-span-4 flex flex-col gap-4 md:gap-6">
                     {/* Visitor Matrix */}
-                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
+                    <div className="glass-dark p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-white/10 transition-all flex items-center justify-between shadow-2xl">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-all" />
                         <div>
-                            <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">Visitor Matrix</p>
-                            <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
+                            <p className="text-slate-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] mb-1 md:mb-2">Visitor Matrix</p>
+                            <h3 className="text-4xl md:text-7xl font-black text-white tracking-tighter">{data?.visitors || 0}</h3>
                         </div>
-                        <div className="p-5 rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
-                            <Users className="w-8 h-8" />
+                        <div className="p-3 md:p-5 rounded-2xl md:rounded-3xl bg-slate-900 border border-white/5 text-indigo-500 shadow-inner">
+                            <Users className="w-5 h-5 md:w-8 md:h-8" />
                         </div>
                     </div>
 
                     {/* Spectral Distribution */}
-                    <div className="glass-dark p-6 md:p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-8 flex-grow shadow-2xl">
+                    <div className="glass-dark p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-white/5 flex flex-col gap-5 md:gap-8 flex-grow shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-1">
-                                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
-                                <div className="h-px w-20 bg-indigo-500/30" />
+                            <div className="flex flex-col gap-0.5 md:gap-1">
+                                <p className="text-slate-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em]">Neural Spectral</p>
+                                <div className="h-px w-12 md:w-20 bg-indigo-500/30" />
                             </div>
-                            <Activity className="w-4 h-4 text-slate-700" />
+                            <Activity className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-700" />
                         </div>
 
                         <div className="flex flex-col gap-6">
