@@ -191,16 +191,82 @@ def detect_age_gender(face_roi):
 
 # MediaPipe logic is now handled by the Tasks API block at the start of the file.
 
+def process_frame_logic(frame, running_ai=True):
+    """Core logic to process a single frame and return data + annotated image"""
+    h, w = frame.shape[:2]
+    result_data = {
+        "emotion": "Neutral",
+        "age": "N/A",
+        "gender": "N/A",
+        "heatmap": "amber",
+        "message": "Scanning...",
+        "status": "No Face Detected"
+    }
+
+    # Optimized ROI for "Real Human Face Size"
+    roi_h, roi_w = int(h * 0.75), int(w * 0.5)
+    roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
+    roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
+    
+    cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
+    
+    found_face = None
+    for (x, y, fw, fh) in faces:
+        cx, cy = x + fw//2, y + fh//2
+        if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
+            found_face = (x, y, fw, fh)
+            break
+        else:
+            cv2.rectangle(frame, (x, y), (x+fw, y+fh), (60, 60, 60), 1)
+
+    if found_face:
+        x, y, fw, fh = found_face
+        draw_neural_dots(frame, found_face)
+        result_data["status"] = "Face Locked"
+        
+        if running_ai:
+            face_roi = frame[max(0,y):min(h,y+fh), max(0,x):min(w,x+fw)]
+            if face_roi.size > 0:
+                f_gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+                f_gray = cv2.equalizeHist(f_gray)
+                f_inp = np.reshape(cv2.resize(f_gray, (48, 48))/255.0, (1, 48, 48, 1))
+                
+                if emotion_model:
+                    pred = emotion_model.predict(f_inp, verbose=0)
+                    fer_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+                    raw_emo = fer_labels[np.argmax(pred)]
+                    final_emo = refine_emotion_with_ckplus(raw_emo, found_face, frame)
+                    age, gen = detect_age_gender(face_roi)
+                    
+                    result_data.update({
+                        "emotion": final_emo,
+                        "age": age,
+                        "gender": gen,
+                        "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
+                        "message": EMOTION_MESSAGES.get(final_emo, "Done")
+                    })
+                    
+                    color = (0, 255, 0)
+                    cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
+                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+    else:
+        result_data["message"] = "Please step into the Zone"
+
+    return result_data, frame
+
 def camera_worker():
     """Background thread to read from IP Camera and process frames"""
     cap = None
-    active_index = -1
     last_reconnect_attempt = 0
     
     while True:
         if state.reset_requested:
             if cap: cap.release()
-            cap = None; active_index = -1; state.reset_requested = False
+            cap = None; state.reset_requested = False
             with state.lock: state.system_status["camera"] = "Resetting..."
             time.sleep(1); continue
 
@@ -209,137 +275,40 @@ def camera_worker():
         if cap is None:
             if time.time() - last_reconnect_attempt > 2:
                 last_reconnect_attempt = time.time()
-                index = 0
                 try:
-                    temp_cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+                    temp_cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
                     if temp_cap.isOpened():
-                        ret_check, _ = temp_cap.read()
-                        if ret_check:
-                            cap = temp_cap; active_index = index
-                            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-                            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-                            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                            with state.lock: state.system_status["camera"] = "Default Camera Ready"
-                        else: temp_cap.release()
+                        cap = temp_cap
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                        with state.lock: state.system_status["camera"] = "Default Camera Ready"
+                    else: temp_cap.release()
                 except: pass
-                if cap is None:
-                    with state.lock: state.system_status["camera"] = "Error: No Camera Found"
             else:
                 time.sleep(1)
-                blank_frame = np.zeros((360, 640, 3), dtype=np.uint8)
-                cv2.putText(blank_frame, "SEARCHING CAMERA...", (160, 180), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
-                _, buffer = cv2.imencode('.jpg', blank_frame)
-                with state.lock:
-                    state.current_frame = buffer.tobytes()
-                    state.system_status["camera"] = "Searching..."
                 continue
 
         if cap:
             ret, frame = cap.read()
             if not ret:
                 cap.release(); cap = None
-                with state.lock: state.system_status["camera"] = "Connection Lost"
                 continue
 
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (640, 360))
-            h, w = frame.shape[:2]
             
-            # Optimized ROI for "Real Human Face Size"
-            roi_h, roi_w = int(h * 0.75), int(w * 0.5) # Center 50% width, 75% height
-            roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
-            roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
+            res_data, processed_frame = process_frame_logic(frame, running)
             
-            cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 255, 255), 1)
-            cv2.putText(frame, "DETECTION ZONE", (roi_x1, roi_y1 - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-            # Always detect faces for "Neural Overlay" visibility
-            if state.frame_count % 2 == 0:
-                roi_faces = []
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = face_cascade.detectMultiScale(gray, 1.05, 5, minSize=(50, 50))
-                for (x, y, fw, fh) in faces:
-                    cx, cy = x + fw//2, y + fh//2
-                    if roi_x1 < cx < roi_x2 and roi_y1 < cy < roi_y2:
-                        roi_faces.append((x, y, fw, fh))
-                    else: cv2.rectangle(frame, (x, y), (x+fw, y+fh), (60, 60, 60), 1)
-
-                now = time.time()
-                if state.locked_face:
-                    lx, ly, lw, lh = state.locked_face['box']
-                    best_match = None; min_dist = 100
-                    for f in roi_faces:
-                        dist = abs(f[0] - lx) + abs(f[1] - ly)
-                        if dist < min_dist: min_dist = dist; best_match = f
-                    if best_match:
-                        state.locked_face['box'] = best_match
-                    else: state.locked_face = None
-                elif roi_faces:
-                    state.locked_face = {'box': roi_faces[0], 'start_time': now}
-                    state.analysis_buffer = []; state.analysis_complete = False
-                    with state.lock: state.visitors += 1
-
-            # Render Dots EVERY frame if a face is locked
-            if state.locked_face:
-                target_box = state.locked_face['box']
-                draw_neural_dots(frame, target_box)
-                
-                # Only perform Analysis if AI is "Started"
-                if running:
-                    x, y, fw, fh = target_box
-                    now = time.time()
-                    face_roi = frame[max(0,y):min(h,y+fh), max(0,x):min(w,x+fw)]
-                    if face_roi.size > 0:
-                        f_gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
-                        f_gray = cv2.equalizeHist(f_gray)
-                        f_inp = np.reshape(cv2.resize(f_gray, (48, 48))/255.0, (1, 48, 48, 1))
-                        elapsed = now - state.locked_face['start_time']
-                        
-                        if not state.analysis_complete:
-                            if emotion_model:
-                                pred = emotion_model.predict(f_inp, verbose=0)
-                                # Standard FER Mapping (7 labels)
-                                fer_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
-                                raw_emo = fer_labels[np.argmax(pred)]
-                                # Research-based CK+ Refinement (Maps to 8 labels)
-                                refined_emo = refine_emotion_with_ckplus(raw_emo, target_box, frame)
-                                state.analysis_buffer.append(refined_emo)
-                            progress = min(int((elapsed / 3.0) * 100), 100)
-                            with state.lock:
-                                state.emotion = "Analyzing..."
-                                state.message = f"Neural Scan (CK+ Standard): {progress}%"
-                                state.age = "..."; state.gender = "..."
-                            if elapsed > 3.0:
-                                from collections import Counter
-                                final_emo = Counter(state.analysis_buffer).most_common(1)[0][0] if state.analysis_buffer else "Neutral"
-                                age, gen = detect_age_gender(face_roi)
-                                state.final_result = {"emotion": final_emo, "age": age, "gender": gen,
-                                    "heatmap": EMOTION_HEATMAP.get(final_emo, 'amber'),
-                                    "message": EMOTION_MESSAGES.get(final_emo, "Done")}
-                                state.analysis_complete = True
-                                with state.lock: state.emotion_stats[final_emo] += 1
-                        
-                        if state.analysis_complete:
-                            res = state.final_result
-                            with state.lock:
-                                state.emotion, state.heatmap, state.message, state.age, state.gender = \
-                                    res["emotion"], res["heatmap"], res["message"], res["age"], res["gender"]
-                            color = (0, 255, 0)
-                            cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                            cv2.putText(frame, f"{res['emotion']} ({res['age']} {res['gender']})", (x, y-10), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                else:
-                    cv2.putText(frame, "AI READY - PRESS START", (target_box[0], target_box[1]-10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-            else:
-                if running:
-                    with state.lock:
-                        state.emotion = "Neutral"; state.heatmap = "amber"; state.message = "Please step into the Zone"
+            if running and res_data.get("emotion") != "Neutral" and not state.analysis_complete:
+                 # Update stats for local tracking
+                 with state.lock:
+                     state.emotion = res_data["emotion"]
+                     state.emotion_stats[res_data["emotion"]] += 1
+                     state.visitors += 1
+                     state.age = res_data["age"]
+                     state.gender = res_data["gender"]
             
-            state.frame_count += 1
-            _, buf = cv2.imencode('.jpg', frame)
+            _, buf = cv2.imencode('.jpg', processed_frame)
             with state.lock: state.current_frame = buf.tobytes()
 
 # ============================================================================
@@ -371,6 +340,42 @@ async def reset_camera():
 
 
 
+
+@app.post("/analyze")
+async def analyze(request: Request):
+    """Processes a base64 frame sent from the browser"""
+    data = await request.json()
+    image_data = data.get("image")
+    if not image_data:
+        return JSONResponse({"status": "error", "message": "No image data"}, status_code=400)
+    
+    try:
+        # Decode base64 image
+        header, encoded = image_data.split(",", 1)
+        nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Process frame
+        res_data, processed_frame = process_frame_logic(frame, True)
+        
+        # Encode result frame
+        _, buffer = cv2.imencode('.jpg', processed_frame)
+        processed_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Update global stats for monitoring
+        if res_data.get("emotion") != "Neutral":
+            with state.lock:
+                state.visitors += 1
+                state.emotion_stats[res_data["emotion"]] += 1
+
+        return {
+            "status": "ok",
+            "image": f"data:image/jpeg;base64,{processed_base64}",
+            "data": res_data
+        }
+    except Exception as e:
+        print(f"[ERR] Analysis failed: {e}")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.post("/control")
 async def control(request: Request):

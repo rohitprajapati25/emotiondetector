@@ -56,12 +56,78 @@ export default function DashboardContent() {
     const [loading, setLoading] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
     const [streamKey, setStreamKey] = useState(0);
+    const [processedImage, setProcessedImage] = useState<string | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    // Polling logic for status monitoring
+    // 1. Browser Camera Administration
+    useEffect(() => {
+        if (isRunning && typeof navigator !== "undefined") {
+            const startCamera = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 360 }
+                    });
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                } catch (err) {
+                    console.error("Camera access denied:", err);
+                    setError("Camera Access Denied");
+                }
+            };
+            startCamera();
+        } else {
+            // Stop camera when not running
+            if (videoRef.current?.srcObject) {
+                const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+                tracks.forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+            }
+        }
+    }, [isRunning]);
+
+    // 2. High-Speed Processing Loop
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isRunning) {
+            interval = setInterval(async () => {
+                if (!videoRef.current || !canvasRef.current) return;
+
+                const canvas = canvasRef.current;
+                const video = videoRef.current;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return;
+
+                // Capture frame
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL("image/jpeg", 0.7);
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/analyze`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageData })
+                    });
+
+                    if (res.ok) {
+                        const result = await res.json();
+                        setProcessedImage(result.image);
+                        // Update stats silently in the background via existing poll or direct update here if needed
+                    }
+                } catch (err) {
+                    console.error("Analysis loop failed:", err);
+                }
+            }, 150); // ~6 FPS for smooth real-time response
+        }
+        return () => clearInterval(interval);
+    }, [isRunning]);
+
+    // Polling logic for global stats
     useEffect(() => {
         let isMounted = true;
         const fetchStatus = async () => {
@@ -72,11 +138,9 @@ export default function DashboardContent() {
 
                 if (isMounted) {
                     setData(prev => {
-                        // Very basic comparison to avoid unnecessary updates
                         if (JSON.stringify(prev) === JSON.stringify(json)) return prev;
                         return json;
                     });
-                    setIsRunning(json.is_running);
                     setError(null);
                 }
             } catch (err) {
@@ -87,14 +151,12 @@ export default function DashboardContent() {
         };
 
         fetchStatus();
-        const interval = setInterval(fetchStatus, 2000);
+        const interval = setInterval(fetchStatus, 3000);
         return () => {
             isMounted = false;
             clearInterval(interval);
         };
     }, []);
-
-
 
     const toggleSystem = async (command: 'start' | 'stop') => {
         try {
@@ -105,7 +167,6 @@ export default function DashboardContent() {
             });
             if (res.ok) {
                 setIsRunning(command === 'start');
-                // Refresh the stream source
                 setStreamKey(Date.now());
             }
         } catch (err) {
@@ -215,7 +276,6 @@ export default function DashboardContent() {
                     {!isRunning ? (
                         <button
                             onClick={() => toggleSystem('start')}
-                            disabled={!isCameraConnected}
                             className="flex-1 lg:flex-none flex items-center justify-center gap-2 md:gap-3 bg-green-600 hover:bg-green-500 text-white px-4 md:px-8 py-2.5 md:py-3 rounded-xl font-black uppercase tracking-widest text-xs md:text-base transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(34,197,94,0.4)] disabled:opacity-30 disabled:grayscale disabled:scale-100"
                         >
                             <Play className="w-4 h-4 md:w-5 md:h-5 fill-current" />
@@ -242,11 +302,15 @@ export default function DashboardContent() {
 
                         {/* Camera Preview */}
                         <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
-                            {isCameraConnected ? (
+                            {/* Hidden Video & Canvas for processing */}
+                            <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+                            <canvas ref={canvasRef} width={640} height={360} className="hidden" />
+
+                            {isRunning ? (
                                 <>
-                                    {/* Main Processed AI Feed */}
+                                    {/* Main Processed AI Feed from Browser-Side Loop */}
                                     <img
-                                        src={`${API_BASE_URL}/video_feed?sk=${streamKey}`}
+                                        src={processedImage || `${API_BASE_URL}/video_feed?sk=${streamKey}`}
                                         className="w-full h-full object-contain"
                                         alt="AI Processed Stream"
                                         key={streamKey}
