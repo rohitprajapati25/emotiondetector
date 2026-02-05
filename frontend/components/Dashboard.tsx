@@ -497,7 +497,7 @@ export default function DashboardContent() {
                                             {(data?.age && data.age !== "N/A") ? (
                                                 <>{data.age} <span className="text-slate-600 font-light mx-1">/</span> {data.gender}</>
                                             ) : (
-                                                <span className="text-slate-500 animate-pulse">Scanning...</span>
+                                                <span className="text-slate-500 font-normal text-xs tracking-widest">ANALYZING</span>
                                             )}
                                         </span>
                                     </div>

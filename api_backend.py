@@ -254,7 +254,12 @@ def process_frame_logic(frame, running_ai=True):
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
+                    
+                    label = f"{final_emo}"
+                    if age != "N/A" and gen != "N/A":
+                        label += f" ({age} {gen})"
+                        
+                    cv2.putText(frame, label, (x, y-10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     else:
         result_data["message"] = "Please step into the Zone"
