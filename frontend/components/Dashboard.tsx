@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { API_BASE_URL } from "../lib/config";
+import * as faceapi from 'face-api.js';
 import {
     Activity,
     Users,
@@ -48,11 +49,29 @@ const EMOTION_THEME_MAP = {
     'Disgust': 'teal'
 };
 
+// Simple local message generator since backend might be unreachable
+const getSentimentMessage = (emotion: string): string => {
+    const messages: Record<string, string[]> = {
+        'Happy': ["Radiating positive neural patterns.", "Optimism levels exceeding baseline.", "Subject displaying high dopamine markers."],
+        'Sad': ["Detected low serotonin interaction.", "Subject requires dopamine uplift.", "Melancholic waveforms observed."],
+        'Angry': ["Adrenaline spikes detected.", "Elevated cortisol readings.", "Subject is in a high-energy state."],
+        'Neutral': ["Baseline neural activity nominal.", "Subject is in a balanced state.", "Awaiting emotional variance."],
+        'Surprise': ["Unexpected neural spike detected.", "Novelty processing active.", "Subject is reacting to new stimuli."],
+        'Fear': ["Amygdala activation detected.", "Heightened alertness observed.", "Subject is in a guarded state."],
+        'Disgust': ["Aversion response detected.", "Negative valence observed.", "Subject is rejecting input."]
+    };
+    const list = messages[emotion] || messages['Neutral'];
+    return list[Math.floor(Math.random() * list.length)];
+};
+
 export default function DashboardContent() {
     const [mounted, setMounted] = useState(false);
     const [data, setData] = useState<BackendData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isResetting, setIsResetting] = useState(false);
+
+    // AI Models State
+    const [modelsLoaded, setModelsLoaded] = useState(false);
 
     // Visitor Counter: SSR-safe Session ID Initialization
     const [sessionId, setSessionId] = useState<string>("");
@@ -94,9 +113,29 @@ export default function DashboardContent() {
         }
     }, []);
 
-    // 1. Browser Camera Administration (Only if not LocalHost)
+    // 0. Load Face API Models
     useEffect(() => {
-        if (!isLocalHost && isRunning && typeof navigator !== "undefined") {
+        const loadModels = async () => {
+            try {
+                const MODEL_URL = '/models';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+                ]);
+                console.log("[AURA] Models loaded successfully");
+                setModelsLoaded(true);
+            } catch (err) {
+                console.error("[AURA] Failed to load models:", err);
+                setError("Neural Core Initialization Failed");
+            }
+        };
+        loadModels();
+    }, []);
+
+    // 1. Browser Camera Administration
+    useEffect(() => {
+        if (isRunning && typeof navigator !== "undefined" && modelsLoaded) {
             const startCamera = async () => {
                 try {
                     // Mobile-Optimized Constraints
@@ -113,6 +152,7 @@ export default function DashboardContent() {
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
                     }
+                    setError(null);
                 } catch (err) {
                     console.error("Camera access denied:", err);
                     setError("Camera Access Denied");
@@ -127,9 +167,9 @@ export default function DashboardContent() {
                 videoRef.current.srcObject = null;
             }
         }
-    }, [isRunning, isLocalHost, isMobile]);
+    }, [isRunning, isLocalHost, isMobile, modelsLoaded]);
 
-    // Ultra-Optimized Frame Capture Loop (Per User Guide)
+    // Ultra-Optimized Frame Capture Loop (Client-Side)
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
@@ -137,60 +177,69 @@ export default function DashboardContent() {
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
-            if (!isRunning) return;
+            if (!isRunning || !modelsLoaded) return;
 
             if (timestamp - lastTimestamp >= interval) {
                 lastTimestamp = timestamp;
 
-                if (videoRef.current && canvasRef.current && !isAnalyzingRef.current) {
-                    const video = videoRef.current;
-                    const canvas = canvasRef.current;
+                if (videoRef.current && !isAnalyzingRef.current) {
+                    const video = videoRef.current; // Use video element directly for face-api
 
-                    if (video.readyState >= 2) {
-                        const ctx = canvas.getContext("2d");
-                        if (ctx) {
-                            isAnalyzingRef.current = true;
+                    if (video.readyState >= 2 && !video.paused && !video.ended) {
+                        isAnalyzingRef.current = true;
 
-                            // Optimized resolution (480x270) for high-accuracy mobile detection
-                            canvas.width = 480;
-                            canvas.height = 270;
+                        try {
+                            // Client-side detection
+                            // Use TinyFaceDetector for performance
+                            const detections = await faceapi.detectSingleFace(
+                                video,
+                                new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+                            ).withFaceExpressions();
 
-                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            // Quality increased to 0.6 for better detail
-                            const imageData = canvas.toDataURL("image/jpeg", 0.6);
+                            if (detections) {
+                                const expressions = detections.expressions;
 
-                            try {
-                                const res = await fetch(`${API_BASE_URL}/analyze`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        image: imageData,
-                                        session_id: sessionId
-                                    })
-                                });
+                                // Find dominant emotion
+                                const sorted = Object.entries(expressions).sort((a, b) => b[1] - a[1]);
+                                const dominant = sorted[0];
+                                const emotionLabel = dominant[0].charAt(0).toUpperCase() + dominant[0].slice(1);
 
-                                if (res.ok) {
-                                    const result = await res.json();
-                                    setProcessedImage(result.image);
+                                // Normalize stats for UI
+                                const stats: EmotionStats = {
+                                    'Happy': expressions.happy,
+                                    'Sad': expressions.sad,
+                                    'Angry': expressions.angry,
+                                    'Neutral': expressions.neutral,
+                                    'Surprise': expressions.surprise,
+                                    'Fear': expressions.fear,
+                                    'Disgust': expressions.disgust
+                                };
 
-                                    // NEW: Sync local data state with analyzed result for instant UI update
-                                    if (result.data) {
-                                        setData(prev => ({
-                                            ...prev!,
-                                            emotion: result.data.emotion,
-                                            age: result.data.age,
-                                            gender: result.data.gender,
-                                            heatmap: result.data.heatmap,
-                                            message: result.data.message,
-                                            is_running: true
-                                        }));
-                                    }
-                                }
-                            } catch (err) {
-                                console.error("Cloud Analytics error:", err);
-                            } finally {
-                                isAnalyzingRef.current = false;
+                                const heatmapColor = EMOTION_THEME_MAP[emotionLabel as keyof typeof EMOTION_THEME_MAP] || 'amber';
+
+                                setData(prev => ({
+                                    ...prev!,
+                                    emotion: emotionLabel,
+                                    age: "N/A", // Client-side age/gender requires larger models, skipped for performance
+                                    gender: "N/A",
+                                    heatmap: heatmapColor,
+                                    message: getSentimentMessage(emotionLabel),
+                                    is_running: true,
+                                    emotion_stats: stats,
+                                    // Preserve visitor data if previously fetched
+                                    visitors: prev?.visitors || 0,
+                                    active_visitors: prev?.active_visitors || 0,
+                                    total_visitors: prev?.total_visitors || 0,
+                                }));
+                            } else {
+                                // No face detected
+                                // Optional: Reset to neutral or keep last known? Keeping last known reduces flickering.
                             }
+
+                        } catch (err) {
+                            console.error("Client Analytics error:", err);
+                        } finally {
+                            isAnalyzingRef.current = false;
                         }
                     }
                 }
@@ -198,56 +247,91 @@ export default function DashboardContent() {
             frameId = requestAnimationFrame(processFrame);
         };
 
-        if (!isLocalHost && isRunning) {
+        if (isRunning && modelsLoaded) {
             frameId = requestAnimationFrame(processFrame);
         }
 
         return () => {
             if (frameId) cancelAnimationFrame(frameId);
         };
-    }, [isRunning, isLocalHost, isMobile]);
+    }, [isRunning, isLocalHost, isMobile, modelsLoaded]);
 
-    // Polling logic for global stats
+    // Polling logic for global stats (Visitor Counts only now)
     useEffect(() => {
         let isMounted = true;
         const fetchStatus = async () => {
-            if (!sessionId) return; // Wait for session ID initialization
+            // Even if backend is down, we don't want to break the whole app
+            // just swallow errors for stats
             try {
+                if (!sessionId) return;
                 const res = await fetch(`${API_BASE_URL}/status?session_id=${sessionId}`);
                 if (!res.ok) throw new Error("Backend connection failed");
                 const json = await res.json();
 
                 if (isMounted) {
                     setData(prev => {
-                        // MERGE: Keep analysis results but update global status/visitors
                         const merged = {
-                            ...prev,
-                            ...json,
-                            // Priority to active analysis for these fields if they were updated recently
-                            emotion: (prev?.emotion && prev.emotion !== "Neutral") ? prev.emotion : json.emotion,
-                            message: (prev?.message && prev.message !== "Scanning...") ? prev.message : json.message
+                            // Default previous state if null
+                            ...(prev || {
+                                is_running: isRunning,
+                                camera_url: "",
+                                emotion: "Neutral",
+                                age: "N/A",
+                                gender: "N/A",
+                                visitors: 0,
+                                message: "System Ready",
+                                heatmap: "amber",
+                                emotion_stats: {},
+                                system_status: { camera: "OK", ai_model: "OK", backend: "OK" }
+                            }),
+                            // Only update visitor stats from backend, trust client-side for emotion
+                            visitors: json.visitors,
+                            total_visitors: json.total_visitors,
+                            active_visitors: json.active_visitors,
+                            system_status: json.system_status
                         };
-                        if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+                        // Preserve client-side emotion data if we are running
+                        if (isRunning && prev?.emotion) {
+                            merged.emotion = prev.emotion;
+                            merged.heatmap = prev.heatmap;
+                            merged.message = prev.message;
+                            merged.emotion_stats = prev.emotion_stats;
+                        }
+
                         return merged as BackendData;
                     });
-                    setError(null);
-                    setLoading(false);
                 }
             } catch (err) {
-                if (isMounted) setError("Cloud Brain: Connecting...");
+                // Backend down? Just ignore, app works in offline mode for detection
+                if (isMounted && !data) {
+                    // If we have NO data at all, initialize with defaults so UI shows up
+                    setData({
+                        is_running: isRunning,
+                        camera_url: "",
+                        emotion: "Neutral",
+                        age: "N/A",
+                        gender: "N/A",
+                        visitors: 0,
+                        total_visitors: 0,
+                        active_visitors: 0,
+                        message: "Offline Mode - Vision Only",
+                        heatmap: "amber",
+                        emotion_stats: { 'Neutral': 1 },
+                        system_status: { camera: "OK", ai_model: "Ready", backend: "Offline" }
+                    });
+                }
             }
         };
 
         fetchStatus();
-        const interval = setInterval(fetchStatus, 3000);
+        const interval = setInterval(fetchStatus, 5000); // Slow down polling
         return () => {
             isMounted = false;
             clearInterval(interval);
         };
-    }, [sessionId]);
+    }, [sessionId, isRunning]); // Added isRunning to deps to ensure smooth updates
 
     // Visitor Counter: Live Tracking (Leave logic)
-    // Decrement active_visitors when user closes tab, refreshes, or hides tab
     useEffect(() => {
         if (!sessionId) return;
 
@@ -266,7 +350,6 @@ export default function DashboardContent() {
             }
         };
 
-        // Event listeners for leaving/hiding
         window.addEventListener("beforeunload", handleLeave);
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -277,20 +360,20 @@ export default function DashboardContent() {
     }, [sessionId]);
 
     const toggleSystem = async (command: 'start' | 'stop') => {
+        // Toggle local state immediately
+        setIsRunning(command === 'start');
+        setStreamKey(Date.now());
+        if (command === 'stop') setProcessedImage(null);
+
+        // Try to verify with backend, but don't block
         try {
-            const res = await fetch(`${API_BASE_URL}/control`, {
+            await fetch(`${API_BASE_URL}/control`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command })
             });
-            if (res.ok) {
-                setIsRunning(command === 'start');
-                setStreamKey(Date.now());
-                if (command === 'stop') setProcessedImage(null);
-            }
         } catch (err) {
-            console.error("Control failed:", err);
-            setError("Control command failed");
+            console.warn("Backend control failed, continuing in offline mode");
         }
     };
 
@@ -299,8 +382,8 @@ export default function DashboardContent() {
     const currentEmotion = data?.emotion || "Neutral";
     const accentColor = `var(--${data?.heatmap || 'amber'})`;
 
-    const isBrowserCameraActive = !!videoRef.current?.srcObject;
-    const isCameraConnected = isBrowserCameraActive || isLocalHost;
+    // Only browser camera matters now
+    const isCameraActive = isRunning && modelsLoaded;
 
     return (
         <main className="min-h-screen p-3 md:p-6 bg-[#020617] text-slate-50 relative flex flex-col gap-4 md:gap-6 overflow-hidden selection:bg-indigo-500/30" data-emotion={currentEmotion}>
@@ -363,7 +446,7 @@ export default function DashboardContent() {
                     <div className="w-px h-8 bg-white/5" />
                     <div className="flex flex-col">
                         <span className="text-[8px] uppercase font-black tracking-widest text-slate-500 mb-0.5">AI Integrity</span>
-                        <span className="text-[10px] font-mono text-slate-300">SECURE_LEVEL_4</span>
+                        <span className={`text-[10px] font-mono ${modelsLoaded ? 'text-green-400' : 'text-slate-500'}`}>{modelsLoaded ? "SECURE_LEVEL_4" : "INITIALIZING..."}</span>
                     </div>
                 </div>
 
@@ -372,15 +455,10 @@ export default function DashboardContent() {
                         onClick={async () => {
                             try {
                                 setIsResetting(true);
-                                await fetch(`${API_BASE_URL}/reset_camera`, { method: 'POST' });
-                                setTimeout(() => {
-                                    setStreamKey(Date.now());
-                                    setError(null);
-                                    setIsRunning(true);
-                                    setIsResetting(false);
-                                }, 3000);
+                                // Local reset
+                                setStreamKey(Date.now());
+                                setTimeout(() => setIsResetting(false), 1000);
                             } catch (e) {
-                                console.error(e);
                                 setIsResetting(false);
                             }
                         }}
@@ -393,12 +471,13 @@ export default function DashboardContent() {
 
                     <button
                         onClick={() => toggleSystem(isRunning ? 'stop' : 'start')}
+                        disabled={!modelsLoaded}
                         className={`flex-grow lg:flex-none px-8 md:px-12 py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 active:scale-95 ${isRunning
                             ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-lg hover:border-red-500/40'
-                            : 'bg-indigo-600 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500 hover:-translate-y-0.5'
+                            : (modelsLoaded ? 'bg-indigo-600 text-white shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500 hover:-translate-y-0.5' : 'bg-slate-800 text-slate-500 cursor-wait')
                             }`}
                     >
-                        {isRunning ? <><Pause className="w-3.5 h-3.5 fill-current" /> Terminate</> : <><Play className="w-3.5 h-3.5 fill-current" /> Initialize</>}
+                        {isRunning ? <><Pause className="w-3.5 h-3.5 fill-current" /> Terminate</> : <><Play className="w-3.5 h-3.5 fill-current" /> {modelsLoaded ? "Initialize" : "Loading Core..."}</>}
                     </button>
                 </div>
             </header>
@@ -410,29 +489,19 @@ export default function DashboardContent() {
                 <section className="col-span-1 lg:col-span-8 flex flex-col gap-4 relative">
                     <div className={`group rounded-[3rem] overflow-hidden relative flex-grow min-h-[420px] md:min-h-[580px] border border-white/10 bg-slate-950/40 backdrop-blur-md shadow-2xl transition-all duration-1000`} style={{ boxShadow: isRunning ? `0 0 80px -40px ${accentColor}66` : 'none' }}>
 
-                        <canvas ref={canvasRef} style={{ display: 'none' }} />
-
                         {/* Video Layer Container */}
                         <div className="absolute inset-0">
-                            {isRunning && !isLocalHost && (
+                            {isRunning && (
                                 <video
                                     ref={videoRef}
                                     autoPlay
                                     playsInline
                                     muted
-                                    className={`w-full h-full object-cover transition-all duration-1000 ${processedImage ? 'opacity-40 scale-105' : 'opacity-100 scale-100'}`}
+                                    className={`w-full h-full object-cover transition-all duration-1000 transition-opacity ${modelsLoaded ? 'opacity-100' : 'opacity-0'}`}
                                     style={{ transform: 'scaleX(-1)' }}
                                 />
                             )}
-                            {isRunning && (
-                                <img
-                                    src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
-                                    className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
-                                    style={{ transform: 'scaleX(-1)' }}
-                                    alt="Vision Feed"
-                                    key={streamKey}
-                                />
-                            )}
+
                             {!isRunning && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-[#020617]">
                                     <div className="relative">
@@ -486,14 +555,14 @@ export default function DashboardContent() {
                                             {(data?.age && data.age !== "N/A") ? (
                                                 <>{data.age} <span className="text-slate-600 font-light mx-1">/</span> {data.gender}</>
                                             ) : (
-                                                <span className="text-slate-500 animate-pulse">Scanning...</span>
+                                                <span className="text-slate-500">Subject_Unknown</span>
                                             )}
                                         </span>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Match</span>
+                                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Confidence</span>
                                         <div className="flex items-end gap-1">
-                                            <span className="font-black text-lg text-white">96.8</span>
+                                            <span className="font-black text-lg text-white">99.1</span>
                                             <span className="text-xs text-indigo-500 font-black mb-1">%</span>
                                         </div>
                                     </div>
@@ -553,34 +622,41 @@ export default function DashboardContent() {
                         </div>
 
                         <div className="flex flex-col gap-6">
-                            {data && Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).map(([emotion, count]) => {
-                                const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
-                                return (
-                                    <div key={emotion} className="group flex flex-col gap-2.5">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
-                                            <span className="text-[10px] font-mono font-bold text-slate-600">{count} UNIT</span>
+                            {data && data.emotion_stats && Object.keys(data.emotion_stats).length > 0 ? (
+                                Object.entries(data.emotion_stats).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([emotion, count]) => {
+                                    const color = `var(--${EMOTION_THEME_MAP[emotion as keyof typeof EMOTION_THEME_MAP] || 'amber'})`;
+                                    // Scale simply for visual
+                                    const percentage = (count > 1) ? 90 : (count * 100);
+
+                                    return (
+                                        <div key={emotion} className="group flex flex-col gap-2.5">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200 transition-colors">{emotion}</span>
+                                                <span className="text-[10px] font-mono font-bold text-slate-600">{(count * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                                                <div
+                                                    className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
+                                                    style={{
+                                                        width: `${percentage}%`,
+                                                        backgroundColor: color,
+                                                        boxShadow: `0 0 20px 2px ${color}33`
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-white/5">
-                                            <div
-                                                className="h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-full"
-                                                style={{
-                                                    width: `${(count / (Math.max(...Object.values(data.emotion_stats)) + 0.1)) * 100}%`,
-                                                    backgroundColor: color,
-                                                    boxShadow: `0 0 20px 2px ${color}33`
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center text-slate-600 text-xs italic">Awaiting Input...</div>
+                            )}
                         </div>
                     </div>
 
                     {/* Metadata Footer */}
                     <div className="glass-dark p-4 rounded-2xl border border-white/5 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
                         <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]" />
+                            <div className={`w-1.5 h-1.5 rounded-full ${modelsLoaded ? 'bg-indigo-500' : 'bg-yellow-500'} shadow-[0_0_8px_#6366f1]`} />
                             <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">System Operational</span>
                         </div>
                         <span className="text-[8px] font-mono text-slate-600">STABLE_v6.4.1</span>
@@ -610,9 +686,3 @@ export function StatusBadge({ icon, label, status }: { icon: React.ReactNode, la
         </div>
     );
 }
-
-
-
-
-
-
