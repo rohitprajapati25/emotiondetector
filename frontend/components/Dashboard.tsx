@@ -103,9 +103,16 @@ export default function DashboardContent() {
                     const constraints = {
                         video: {
                             facingMode: 'user',
-                            width: isMobile ? { ideal: 640 } : { ideal: 1280 },
-                            height: isMobile ? { ideal: 480 } : { ideal: 720 },
-                            frameRate: { ideal: 24, max: 30 }
+                            // Simpler constraints for faster mobile locking
+                            ...(isMobile ? {
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                frameRate: 24
+                            } : {
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 },
+                                frameRate: 30
+                            })
                         }
                     };
 
@@ -147,17 +154,21 @@ export default function DashboardContent() {
                     const canvas = canvasRef.current;
 
                     if (video.readyState >= 2) {
-                        const ctx = canvas.getContext("2d");
+                        // Optimization: Enable `willReadFrequently` for faster readback
+                        const ctx = canvas.getContext("2d", { willReadFrequently: true });
                         if (ctx) {
                             isAnalyzingRef.current = true;
 
-                            // Optimized resolution (480x270) for high-accuracy mobile detection
-                            canvas.width = 480;
-                            canvas.height = 270;
+                            // Optimized resolution for high-accuracy but low bandwidth
+                            // Mobile: 320x240 (Fastest Upload) | Desktop: 480x270 (Standard)
+                            canvas.width = isMobile ? 320 : 480;
+                            canvas.height = isMobile ? 240 : 270;
 
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            // Quality increased to 0.6 for better detail
-                            const imageData = canvas.toDataURL("image/jpeg", 0.6);
+
+                            // Quality optimized to 0.5 for mobile speed vs 0.6 for desktop
+                            const quality = isMobile ? 0.5 : 0.6;
+                            const imageData = canvas.toDataURL("image/jpeg", quality);
 
                             try {
                                 const res = await fetch(`${API_BASE_URL}/analyze`, {
