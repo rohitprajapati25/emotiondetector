@@ -96,33 +96,7 @@ EMOTION_MESSAGES = {
 
 def refine_emotion_with_ckplus(base_emotion, box, frame):
     """Research-based AU (Action Unit) Refiner for CK+ Standards"""
-    try:
-        x, y, w, h = box
-        # Contempt (AU14): Asymmetrical lip corner pull.
-        # Heuristic: If model says Neutral/Happy but there's asymmetry, promote to Contempt.
-        # For simplicity in this version, we will occasionally promote 'Neutral' if 
-        # it's the dominant stable emotion and the user is 'smirking'.
-        
-        if base_emotion == 'Neutral':
-            # Check frame brightness/contrast in mouth region vs face to guess "smirk"
-            # (In a real implementation, we'd use MediaPipe landmarks 61, 291)
-            # For this 'workable' version, we'll use a probability-based promotion
-            # to ensure the 'Contempt' bar actually moves in the UI when neutral.
-            import random
-            if random.random() < 0.15: # 15% chance to promote Neutral to Contempt for variety
-                return 'Contempt'
-
-        return base_emotion
-    except:
-        return base_emotion
-
-def refine_emotion_v2(base_emotion, face_roi):
-    """Refined emotion logic using intensified ROI analysis"""
-    if base_emotion == 'Neutral':
-        # Check for slight smile (Contempt) or slight frown (Sad)
-        # For now, let's ensure Contempt is at least possible to see in the distribution
-        # by occasionally mapping 'Neutral' to 'Contempt' if certain facial features match.
-        pass
+    # Simple placeholder logic
     return base_emotion
 
 # Fallback Face detector (Haar Cascades)
@@ -172,7 +146,7 @@ class DetectionState:
         self.known_sessions = self._load_known_sessions()
         self.total_visitors = len(self.known_sessions)
         self.active_sessions = {} # {session_id: last_seen_timestamp}
-        self.session_emotions = defaultdict(dict) # {session_id: {emotion: last_counted_timestamp}}
+        self.session_emotions = defaultdict(set) # {session_id: {emotion1, emotion2}}
         self.lock = threading.Lock()
 
     def _load_known_sessions(self):
@@ -229,8 +203,8 @@ def process_frame_logic(frame, running_ai=True):
         "status": "No Face Detected"
     }
 
-    # Widen ROI for better mobile/laptop usability (95% coverage)
-    roi_h, roi_w = int(h * 0.95), int(w * 0.95)
+    # Expanded ROI for better mobile usability
+    roi_h, roi_w = int(h * 0.90), int(w * 0.90)
     roi_x1, roi_y1 = (w - roi_w) // 2, (h - roi_h) // 2
     roi_x2, roi_y2 = roi_x1 + roi_w, roi_y1 + roi_h
     
@@ -250,27 +224,6 @@ def process_frame_logic(frame, running_ai=True):
     if not found_face and len(faces) > 0:
         found_face = faces[0]
         cv2.rectangle(frame, (found_face[0], found_face[1]), (found_face[0]+found_face[2], found_face[1]+found_face[3]), (0, 165, 255), 1)
-
-    # --- Temporal Smoothing (Simple low-pass filter) ---
-    if found_face:
-        # Check if we already have a 'smoothed_box' in state to interpolate
-        with state.lock:
-            if not hasattr(state, 'smoothed_box') or state.smoothed_box is None:
-                state.smoothed_box = found_face
-            else:
-                # 70% current, 30% new for stability
-                sx, sy, sw, sh = state.smoothed_box
-                nx, ny, nw, nh = found_face
-                state.smoothed_box = (
-                    int(sx * 0.7 + nx * 0.3),
-                    int(sy * 0.7 + ny * 0.3),
-                    int(sw * 0.7 + nw * 0.3),
-                    int(sh * 0.7 + nh * 0.3)
-                )
-            found_face = state.smoothed_box
-    else:
-        with state.lock:
-            state.smoothed_box = None
 
     if found_face:
         x, y, fw, fh = found_face
@@ -301,7 +254,7 @@ def process_frame_logic(frame, running_ai=True):
                     
                     color = (0, 255, 0)
                     cv2.rectangle(frame, (x, y), (x+fw, y+fh), color, 2)
-                    cv2.putText(frame, f"{final_emo}", (x, y-10), 
+                    cv2.putText(frame, f"{final_emo} ({age} {gen})", (x, y-10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     else:
         result_data["message"] = "Please step into the Zone"
@@ -388,19 +341,15 @@ async def analyze(request: Request):
         _, buffer = cv2.imencode('.jpg', processed_frame)
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
         
-        # Track emotion with cooldown (every 3 seconds of continuous detection)
+        # Track emotion unique to this session
         session_id = data.get("session_id")
         if session_id and len(session_id) > 5 and res_data.get("emotion"):
             emo = res_data["emotion"]
-            now = time.time()
-            last_count = state.session_emotions[session_id].get(emo, 0)
-            
-            # If 3 seconds passed since last count for this emotion in this session
-            if now - last_count > 3:
+            if emo not in state.session_emotions[session_id]:
                 with state.lock:
-                    state.session_emotions[session_id][emo] = now
+                    state.session_emotions[session_id].add(emo)
                     state.emotion_stats[emo] += 1
-                    # print(f"[SYS] Emotion Counted (+1 Unit): {session_id} -> {emo}")
+                    print(f"[SYS] Unique Emotion Tracked: {session_id} -> {emo}")
 
         return {
             "status": "ok",
