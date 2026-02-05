@@ -428,7 +428,7 @@ export default function DashboardContent() {
                                 <img
                                     src={isLocalHost ? `${API_BASE_URL}/video_feed?sk=${streamKey}` : (processedImage || "")}
                                     className={`absolute inset-0 w-full h-full object-cover z-10 transition-all duration-500 ${processedImage || isLocalHost ? 'opacity-100' : 'opacity-0 scale-95'}`}
-                                    style={{ transform: 'scaleX(-1)' }}
+                                    style={isLocalHost ? { transform: 'scaleX(-1)' } : {}}
                                     alt="Vision Feed"
                                     key={streamKey}
                                 />

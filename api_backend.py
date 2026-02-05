@@ -337,6 +337,11 @@ async def analyze(request: Request):
         header, encoded = image_data.split(",", 1)
         nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # FIX: Flip the frame horizontally so the user sees a mirror, 
+        # but text drawn ON TOP of it becomes readable.
+        frame = cv2.flip(frame, 1)
+        
         res_data, processed_frame = process_frame_logic(frame, True)
         _, buffer = cv2.imencode('.jpg', processed_frame)
         processed_base64 = base64.b64encode(buffer).decode('utf-8')
