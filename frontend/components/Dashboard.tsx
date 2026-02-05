@@ -133,7 +133,7 @@ export default function DashboardContent() {
     useEffect(() => {
         let frameId: number;
         let lastTimestamp = 0;
-        const FPS_THROTTLE = isMobile ? 12 : 20; // Super smooth 20 FPS target for analysis
+        const FPS_THROTTLE = isMobile ? 24 : 30; // Increased to 30 FPS for video-like smoothness
         const interval = 1000 / FPS_THROTTLE;
 
         const processFrame = async (timestamp: number) => {
