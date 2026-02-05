@@ -92,12 +92,9 @@ export default function DashboardContent() {
     }, []);
     const [loading, setLoading] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
-    const [streamKey, setStreamKey] = useState(0);
-    const [processedImage, setProcessedImage] = useState<string | null>(null);
     const [isLocalHost, setIsLocalHost] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const isAnalyzingRef = useRef(false);
 
     useEffect(() => {
@@ -210,9 +207,9 @@ export default function DashboardContent() {
                                     'Sad': expressions.sad,
                                     'Angry': expressions.angry,
                                     'Neutral': expressions.neutral,
-                                    'Surprise': expressions.surprise,
-                                    'Fear': expressions.fear,
-                                    'Disgust': expressions.disgust
+                                    'Surprise': expressions.surprised,
+                                    'Fear': expressions.fearful,
+                                    'Disgust': expressions.disgusted
                                 };
 
                                 const heatmapColor = EMOTION_THEME_MAP[emotionLabel as keyof typeof EMOTION_THEME_MAP] || 'amber';
@@ -362,8 +359,6 @@ export default function DashboardContent() {
     const toggleSystem = async (command: 'start' | 'stop') => {
         // Toggle local state immediately
         setIsRunning(command === 'start');
-        setStreamKey(Date.now());
-        if (command === 'stop') setProcessedImage(null);
 
         // Try to verify with backend, but don't block
         try {
@@ -456,7 +451,6 @@ export default function DashboardContent() {
                             try {
                                 setIsResetting(true);
                                 // Local reset
-                                setStreamKey(Date.now());
                                 setTimeout(() => setIsResetting(false), 1000);
                             } catch (e) {
                                 setIsResetting(false);
